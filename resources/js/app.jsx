@@ -1,21 +1,21 @@
-import React from "react";
-import ReactDOM from 'react-dom/client';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import './bootstrap';
+import '../css/app.css';
 
-const App = () => {
-    return (
-        <div>
-            <h1>Pp</h1>
-            <button className="btn btn-primary">Holii</button>
-        </div>
-    );
-};
+import { createRoot } from 'react-dom/client';
+import { createInertiaApp } from '@inertiajs/react';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 
-if (document.getElementById('root')) {
-    const Index = ReactDOM.createRoot(document.getElementById("root"));
-    Index.render(
-        <React.StrictMode>
-            <App/>
-        </React.StrictMode>
-    )
-}
+const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+
+createInertiaApp({
+    title: (title) => `${title} - ${appName}`,
+    resolve: (name) => resolvePageComponent(`./Pages/${name}.jsx`, import.meta.glob('./Pages/**/*.jsx')),
+    setup({ el, App, props }) {
+        const root = createRoot(el);
+
+        root.render(<App {...props} />);
+    },
+    progress: {
+        color: '#4B5563',
+    },
+});
