@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpensesController;
 use App\Http\Controllers\EarningsController;
 use App\Http\Controllers\ProfileController;
@@ -28,24 +29,25 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
-
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::resource('earnings', EarningsController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('auth');
-    Route::resource('expenses', ExpensesController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('auth');
+    Route::resource('/earnings', EarningsController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('auth');
+    Route::resource('/expenses', ExpensesController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('auth');
 
-    Route::post('shop-list', [ShopListController::class, 'store'])->name('shoplist.store');
-    Route::get('shop-list', [ShopListController::class, 'index'])->name('shoplist.index');
-    Route::patch('shop-list/{id}', [ShopListController::class, 'update'])->name('shoplist.update');
-    Route::delete('shop-list/{id}', [ShopListController::class, 'destroy'])->name('shoplist.destroy');
-    Route::post('shop-list/{id}/purchase', [ShopListController::class, 'purchase'])->name('shoplist.purchase');
-    Route::post('shop-list/{id}/pending', [ShopListController::class, 'pending'])->name('shoplist.pending');
+    Route::post('/shop-list', [ShopListController::class, 'store'])->name('shoplist.store');
+    Route::get('/shop-list', [ShopListController::class, 'index'])->name('shoplist.index');
+    Route::patch('/shop-list/{id}', [ShopListController::class, 'update'])->name('shoplist.update');
+    Route::delete('/shop-list/{id}', [ShopListController::class, 'destroy'])->name('shoplist.destroy');
+    Route::post('/shop-list/{id}/purchase', [ShopListController::class, 'purchase'])->name('shoplist.purchase');
+    Route::post('/shop-list/{id}/pending', [ShopListController::class, 'pending'])->name('shoplist.pending');
+
+    Route::get('/dashboard', [DashboardController::class, 'ShowDashboard'])->name('dashboard');
+    Route::get('/savings', [DashboardController::class, 'ShowSavings'])->name('savings.show');
+    Route::get('/box', [DashboardController::class, 'ShowBox'])->name('box.show');
+    Route::post('/box/transfer', [DashboardController::class, 'transfer'])->name('box.transfer');
 });
 
 require __DIR__.'/auth.php';
