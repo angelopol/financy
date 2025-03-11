@@ -4,35 +4,37 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    public function earnings()
+    public function earnings(): HasMany
     {
         return $this->hasMany(Earning::class, 'user', 'id');
     }
 
-    public function expenses()
+    public function expenses(): HasMany
     {
         return $this->hasMany(Expense::class, 'user', 'id');
     }
 
-    public function ShopListItems()
+    public function ShopListItems(): HasMany
     {
         return $this->hasMany(ShopListItem::class, 'user', 'id');
     }
 
-    public function savings()
+    public function savings(): HasOne
     {
         return $this->hasOne(Saving::class, 'user', 'id');
     }
 
-    public function box()
+    public function box(): HasOne
     {
         return $this->hasOne(Box::class, 'user', 'id');
     }

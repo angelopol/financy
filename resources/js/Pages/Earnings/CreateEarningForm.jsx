@@ -12,7 +12,8 @@ export default function CreateEarningForm() {
         amount: '',
         currency: '$',
         provider: 'box',
-        term: ''
+        term: '',
+        nextterm: '0',
     });
 
     const submit = (e) => {
@@ -36,6 +37,7 @@ export default function CreateEarningForm() {
                     onChange={(e) => setData('description', e.target.value)}
                     type="text"
                     className="mt-1 block w-full"
+                    maxLength="500"
                 />
 
                 <InputError message={errors.description} className="mt-2" />
@@ -90,17 +92,32 @@ export default function CreateEarningForm() {
             </div>
 
             <div>
-                <InputLabel htmlFor="term" value="Term" />
+                <InputLabel htmlFor="term" value="Claim term in days" />
 
                 <TextInput
                     id="term"
                     value={data.term}
                     onChange={(e) => setData('term', e.target.value)}
-                    type="text"
+                    type="number"
                     className="mt-1 block w-full"
+                    min="1"
                 />
 
                 <InputError message={errors.term} className="mt-2" />
+            </div>
+
+            <div>
+                <InputLabel htmlFor="nextterm" value="Days to the next claim" />
+
+                <TextInput
+                    id="nextterm"
+                    value={data.nextterm}
+                    onChange={(e) => setData('nextterm', e.target.value)}
+                    type="number"
+                    className="mt-1 block w-full"
+                />
+
+                <InputError message={errors.nextterm} className="mt-2" />
             </div>
 
             <div className="flex justify-end items-center gap-4">
