@@ -1,8 +1,12 @@
 import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import CreateEarningModal from './CreateEarningModal';
+import Item from '@/components/Item';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+dayjs.extend(relativeTime);
 
-export default function Earnings({ auth }) {
+export default function Earnings({ auth, OneTimeEarnings, RecurringEarnings }) {
     return (
         <AuthenticatedLayout
             user={auth}
@@ -14,6 +18,18 @@ export default function Earnings({ auth }) {
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6">
+                            {RecurringEarnings.map((earning) => (
+                                <Item
+                                    key={earning.id}
+                                    earning={earning}
+                                />
+                            ))}
+                            {OneTimeEarnings.map((earning) => (
+                                <Item
+                                    key={earning.id}
+                                    earning={earning}
+                                />
+                            ))}
                             <CreateEarningModal />
                         </div>
                     </div>

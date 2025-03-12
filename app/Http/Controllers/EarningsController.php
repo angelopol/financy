@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use App\Models\Box;
+use App\Models\Earning;
 use App\Models\Saving;
 
 class EarningsController extends Controller
@@ -17,6 +18,8 @@ class EarningsController extends Controller
     {
         return Inertia::render('Earnings/Earnings', [
             'auth' => auth()->user(),
+            'RecurringEarnings' => Earning::where('user', auth()->id())->where('term', '!=', null)->latest()->get(),
+            'OneTimeEarnings' => Earning::where('user', auth()->id())->where('term', null)->latest()->get()
         ]);
     }
 
