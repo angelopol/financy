@@ -8,11 +8,16 @@ use Inertia\Inertia;
 use App\Models\Box;
 use App\Models\Earning;
 use App\Models\Saving;
+use Exception;
 
 class EarningsController extends Controller
 {
     public static function GetRates(){
-        $response = Http::get('https://ve.dolarapi.com/v1/dolares');
+        try {
+            $response = Http::get('https://ve.dolarapi.com/v1/dolares');
+        } catch (Exception $e) {
+            return ['parallel' => 1, 'bcv' => 1];
+        }
 
         return ['parallel' => $response->json()[1]['promedio'], 'bcv' => $response->json()[0]['promedio']];
     }
