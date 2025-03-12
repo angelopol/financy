@@ -2,7 +2,11 @@
 namespace App\Providers;
 
 use App\Models\Earning;
+use App\Models\ShopListItem;
 use App\Policies\EarningsPolicy;
+use App\Policies\ShopListPolicy;
+use App\Models\Expense;
+use App\Policies\ExpensesPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
@@ -14,6 +18,8 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected $policies = [
         Earning::class => EarningsPolicy::class,
+        Expense::class => ExpensesPolicy::class,
+        ShopListItem::class => ShopListPolicy::class,
     ];
 
     /**

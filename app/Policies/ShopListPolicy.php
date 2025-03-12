@@ -37,7 +37,7 @@ class ShopListPolicy
      */
     public function update(User $user, ShopListItem $shopListItem): bool
     {
-        //
+        return $shopListItem->user()->is($user);
     }
 
     /**
@@ -45,7 +45,7 @@ class ShopListPolicy
      */
     public function delete(User $user, ShopListItem $shopListItem): bool
     {
-        //
+        return $this->update($user, $shopListItem);
     }
 
     /**

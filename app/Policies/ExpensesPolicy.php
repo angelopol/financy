@@ -37,7 +37,7 @@ class ExpensesPolicy
      */
     public function update(User $user, Expense $expense): bool
     {
-        //
+        return $expense->user()->is($user);
     }
 
     /**
@@ -45,7 +45,7 @@ class ExpensesPolicy
      */
     public function delete(User $user, Expense $expense): bool
     {
-        //
+        return $this->update($user, $expense);
     }
 
     /**
