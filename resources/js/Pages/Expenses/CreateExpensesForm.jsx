@@ -13,6 +13,7 @@ export default function CreateExpensesForm() {
         provider: 'box',
         term: '',
         nextterm: '',
+        currency: '$',
     });
 
     const submit = (e) => {

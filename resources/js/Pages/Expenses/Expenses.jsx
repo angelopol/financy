@@ -1,8 +1,9 @@
 import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import CreateExpensesModal from './CreateExpensesModal';
+import Item from '@/components/Item';
 
-export default function Expenses({ auth }) {
+export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses }) {
     return (
         <AuthenticatedLayout
             user={auth}
@@ -14,6 +15,23 @@ export default function Expenses({ auth }) {
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6">
+                            {RecurringExpenses.length > 0 && RecurringExpenses.map((expense) => (
+                                <Item
+                                    key={expense.id}
+                                    earning={expense}
+                                    Route='expenses.update'
+                                    DestroyRoute='expenses.destroy'
+                                />
+                            ))}
+                            {RecurringExpenses.length > 0 && <br />}
+                            {OneTimeExpenses.map((expense) => (
+                                <Item
+                                    key={expense.id}
+                                    earning={expense}
+                                    Route='expenses.update'
+                                    DestroyRoute='expenses.destroy'
+                                />
+                            ))}
                             <CreateExpensesModal />
                         </div>
                     </div>

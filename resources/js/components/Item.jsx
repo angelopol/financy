@@ -51,12 +51,13 @@ export default function Item({ earning, Route, DestroyRoute }) {
         <div key={earning.id} className="flex items-center justify-between">
             <div>
                 <h3 className="text-lg font-semibold">{earning.description}</h3>
-                <p className="text-sm text-gray-500">{earning.amount} {getCurrencyLabel(earning.currency)}</p>
+                <p className="text-sm text-gray-500">{earning.amount} {earning.currency ? (getCurrencyLabel(earning.currency)) : '$'}</p>
                 {earning.term ? (
                     <p className="text-sm text-gray-500">Claim cycle of {earning.term} days</p>
-                ) : (
+                ) : earning.OneTimeTase ? (
                     <p className="text-sm text-gray-500">Parallel exchange tase of {earning.OneTimeTase}</p>
-                )}
+                ) : null}
+                <p className="text-sm text-gray-500">Saved in {earning.provider}</p>
                 <p className="text-sm text-gray-500">{dayjs(earning.created_at).fromNow()}</p>
             </div>
             <Dropdown>

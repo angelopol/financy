@@ -2,9 +2,6 @@ import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import CreateEarningModal from './CreateEarningModal';
 import Item from '@/components/Item';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
-dayjs.extend(relativeTime);
 
 export default function Earnings({ auth, OneTimeEarnings, RecurringEarnings }) {
     return (
@@ -26,6 +23,7 @@ export default function Earnings({ auth, OneTimeEarnings, RecurringEarnings }) {
                                     DestroyRoute='earnings.destroy'
                                 />
                             ))}
+                            {RecurringEarnings.length > 0 && <br />}
                             {OneTimeEarnings.map((earning) => (
                                 <Item
                                     key={earning.id}

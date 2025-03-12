@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Http;
 use App\Models\Box;
 use App\Models\Saving;
+use App\Models\Expense;
 
 class ExpensesController extends Controller
 {
@@ -17,6 +18,8 @@ class ExpensesController extends Controller
     {
         return Inertia::render('Expenses/Expenses', [
             'auth' => auth()->user(),
+            'RecurringExpenses' => Expense::where('user', auth()->id())->where('term', '!=', null)->latest()->get(),
+            'OneTimeExpenses' => Expense::where('user', auth()->id())->where('term', null)->latest()->get()
         ]);
     }
 
@@ -67,22 +70,34 @@ class ExpensesController extends Controller
 
         $request->user()->expenses()->create($validated);
 
-        return redirect(route('earnings.index'));
+        return redirect(route('expenses.index'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Expense $expense)
     {
-        //
+        $this->authorize('update', $expense);
+
+        $validated = $request->validate([
+            'description' => 'required|string|max:500'
+        ]);
+
+        $expense->update($validated);
+
+        return redirect(route('expenses.index'));
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Expense $expense)
     {
-        //
+        $this->authorize('delete', $expense);
+
+        $expense->delete();
+
+        return redirect(route('expenses.index'));
     }
 }
