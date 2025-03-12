@@ -22,12 +22,16 @@ export default function Earnings({ auth, OneTimeEarnings, RecurringEarnings }) {
                                 <Item
                                     key={earning.id}
                                     earning={earning}
+                                    Route='earnings.update'
+                                    DestroyRoute='earnings.destroy'
                                 />
                             ))}
                             {OneTimeEarnings.map((earning) => (
                                 <Item
                                     key={earning.id}
                                     earning={earning}
+                                    Route='earnings.update'
+                                    DestroyRoute='earnings.destroy'
                                 />
                             ))}
                             <CreateEarningModal />

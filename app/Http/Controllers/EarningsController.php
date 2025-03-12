@@ -77,16 +77,28 @@ class EarningsController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Earning $earning)
     {
-        //
+        $this->authorize('update', $earning);
+
+        $validated = $request->validate([
+            'description' => 'required|string|max:500'
+        ]);
+
+        $earning->update($validated);
+
+        return redirect(route('earnings.index'));
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Earning $earning)
     {
-        //
+        $this->authorize('delete', $earning);
+
+        $earning->delete();
+
+        return redirect(route('earnings.index'));
     }
 }

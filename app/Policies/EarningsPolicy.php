@@ -37,7 +37,7 @@ class EarningsPolicy
      */
     public function update(User $user, Earning $earning): bool
     {
-        //
+        return $earning->user()->is($user);
     }
 
     /**
@@ -45,7 +45,7 @@ class EarningsPolicy
      */
     public function delete(User $user, Earning $earning): bool
     {
-        //
+        return $this->update($user, $earning);
     }
 
     /**
