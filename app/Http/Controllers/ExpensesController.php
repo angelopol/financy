@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Illuminate\Support\Facades\Http;
+use App\Models\Box;
+use App\Models\Saving;
 
 class ExpensesController extends Controller
 {
@@ -11,7 +15,9 @@ class ExpensesController extends Controller
      */
     public function index()
     {
-        //
+        return Inertia::render('Expenses/Expenses', [
+            'auth' => auth()->user(),
+        ]);
     }
 
     /**
@@ -19,7 +25,49 @@ class ExpensesController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'amount' => 'required|numeric',
+            'description' => 'required|string|max:500',
+            'currency' => 'required|string|in:$,bs,$bcv',
+            'provider' => 'required|string|in:box,savings',
+            'term' => 'nullable|numeric|min:1',
+            'nextterm' => 'nullable|numeric'
+        ]);
+
+        $response = Http::get('https://ve.dolarapi.com/v1/dolares');
+        $parallel = $response->json()[1]['promedio'];
+        $bcv = $response->json()[0]['promedio'];
+
+        $validated['user'] = auth()->id();
+        
+        if($validated['currency'] == '$bcv'){
+            $validated['amount'] = ($validated['amount'] * $bcv) / $parallel;
+        } elseif ($validated['currency'] == 'bs') {
+            $validated['amount'] = $validated['amount'] / $parallel;
+        } else {
+            $validated['amount'] = $validated['amount'];
+        }
+
+        if($validated['provider'] == 'box'){
+            $provider = Box::where('user', auth()->id())->first();
+        } elseif ($validated['provider'] == 'savings') {
+            $provider = Saving::where('user', auth()->id())->first();
+        }
+
+        if(isset($validated['term'])){
+            $validated['UpdatedTerm'] = now();
+        } else {
+            $provider->amount -= $validated['amount'];
+            $provider->save();
+        }
+
+        if(isset($validated['nextterm'])){
+            $validated['NextClaim'] = $validated['nextterm'];
+        }
+
+        $request->user()->expenses()->create($validated);
+
+        return redirect(route('earnings.index'));
     }
 
     /**

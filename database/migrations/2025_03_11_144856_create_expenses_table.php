@@ -18,6 +18,7 @@ return new class extends Migration
             $table->decimal('amount');
             $table->enum('provider', ['box', 'savings']);
             $table->integer('term')->nullable();
+            $table->integer('NextClaim')->nullable();
             $table->timestamp('UpdatedTerm')->nullable();
             $table->timestamps();
         });

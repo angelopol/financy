@@ -19,6 +19,7 @@ return new class extends Migration
             $table->enum('currency', ['$', 'bs', '$bcv', '$parallel']);
             $table->enum('provider', ['box', 'savings']);
             $table->integer('term')->nullable();
+            $table->integer('NextClaim')->nullable();
             $table->timestamp('UpdatedTerm')->nullable();
             $table->decimal('OneTimeTase')->nullable();
             $table->timestamps();

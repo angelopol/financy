@@ -6,11 +6,10 @@ import SelectInput from '@/Components/SelectInput';
 import { useForm } from '@inertiajs/react';
 import { Transition } from '@headlessui/react';
 
-export default function CreateEarningForm() {
+export default function CreateExpensesForm() {
     const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({
         description: '',
         amount: '',
-        currency: '$',
         provider: 'box',
         term: '',
         nextterm: '',
@@ -19,7 +18,7 @@ export default function CreateEarningForm() {
     const submit = (e) => {
         e.preventDefault();
 
-        post(route('earnings.store'), {
+        post(route('expenses.store'), {
             onSuccess: () => {
                 reset();
             },
@@ -69,7 +68,6 @@ export default function CreateEarningForm() {
                     <option value="$">Dollar</option>
                     <option value="bs">Bolivares</option>
                     <option value="$bcv">Dollars in bolivares indexed in BCV</option>
-                    <option value="$parallel">Dollars in bolivares indexed in parallel tase</option>
                 </SelectInput>
 
                 <InputError message={errors.currency} className="mt-2" />

@@ -21,6 +21,7 @@ class Earning extends Model
         'currency',
         'provider',
         'term',
+        'NextTerm',
         'UpdatedTerm',
         'OneTimeTase'
     ];

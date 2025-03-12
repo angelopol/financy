@@ -62,6 +62,10 @@ class EarningsController extends Controller
             $provider->save();
         }
 
+        if(isset($validated['nextterm'])){
+            $validated['NextClaim'] = $validated['nextterm'];
+        }
+
         $request->user()->earnings()->create($validated);
 
         return redirect(route('earnings.index'));
