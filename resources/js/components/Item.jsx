@@ -10,9 +10,9 @@ dayjs.extend(relativeTime);
 const getCurrencyLabel = (currency) => {
     switch (currency) {
         case '$':
-            return 'Dollar';
+            return '$';
         case 'bs':
-            return 'Bolivares';
+            return 'Bs.';
         case '$bcv':
             return 'Dollars in bolivares indexed in BCV';
         case '$parallel':
@@ -22,7 +22,7 @@ const getCurrencyLabel = (currency) => {
     }
 };
 
-export default function Item({ earning, Route, DestroyRoute }) {
+export default function Item({ earning, Route, DestroyRoute, openRatesModal }) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
 
@@ -51,7 +51,7 @@ export default function Item({ earning, Route, DestroyRoute }) {
         <div key={earning.id} className="flex items-center justify-between">
             <div>
                 <h3 className="text-lg font-semibold">{earning.description}</h3>
-                <p className="text-sm text-gray-500">{earning.amount} {earning.currency ? (getCurrencyLabel(earning.currency)) : '$'}</p>
+                <p className="text-sm text-gray-500" onClick={() => openRatesModal(earning.amount, earning.currency ? earning.currency : '$')}>{earning.amount} {earning.currency ? (getCurrencyLabel(earning.currency)) : '$'}</p>
                 {earning.term ? (
                     <p className="text-sm text-gray-500">Claim cycle of {earning.term} days</p>
                 ) : earning.OneTimeTase ? (

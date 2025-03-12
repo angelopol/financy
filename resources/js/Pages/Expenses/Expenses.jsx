@@ -2,8 +2,39 @@ import { Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import CreateExpensesModal from './CreateExpensesModal';
 import Item from '@/components/Item';
+import Pagination from '@/components/Pagination';
+import { useState } from 'react';
+import AmountConversionModal from '@/components/AmountConversionModal';
+import { ConvertAmount } from '@/helpers/convertions.js';
 
-export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses }) {
+export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses, rates }) {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedAmount, setSelectedAmount] = useState(0);
+    const [selectedCurrency, setSelectedCurrency] = useState('$');
+
+    const openRatesModal = (amount, currency) => {
+        setSelectedAmount(amount);
+        setSelectedCurrency(currency);
+        setIsModalOpen(true);
+    };
+
+    const closeratesModal = () => {
+        setIsModalOpen(false);
+    };
+
+    const items = [];
+    let amount = 0;
+    RecurringExpenses.data.forEach((expense) => {
+        items.push(<Item
+            key={expense.id}
+            earning={expense}
+            Route='expenses.update'
+            DestroyRoute='expenses.destroy'
+            openRatesModal={openRatesModal}
+        />);
+        amount += ConvertAmount(expense.amount, expense.currency, rates);
+    });
+
     return (
         <AuthenticatedLayout
             user={auth}
@@ -15,28 +46,38 @@ export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses }) {
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6">
-                            {RecurringExpenses.length > 0 && RecurringExpenses.map((expense) => (
+                            {items}
+                            {RecurringExpenses.data.length > 0 && (
+                                <div className="p-1">
+                                    <Pagination links={RecurringExpenses.links} />
+                                </div>
+                            ) && (
+                                <span className="text-sm text-gray-500 flex justify-end cursor-pointer" onClick={() => openRatesModal(amount, '$')}>Total amount: {amount}$</span>
+                            )}
+                            {OneTimeExpenses.data.map((expense) => (
                                 <Item
                                     key={expense.id}
                                     earning={expense}
                                     Route='expenses.update'
                                     DestroyRoute='expenses.destroy'
+                                    openRatesModal={openRatesModal}
                                 />
                             ))}
-                            {RecurringExpenses.length > 0 && <br />}
-                            {OneTimeExpenses.map((expense) => (
-                                <Item
-                                    key={expense.id}
-                                    earning={expense}
-                                    Route='expenses.update'
-                                    DestroyRoute='expenses.destroy'
-                                />
-                            ))}
+                            <div className='pt-1 pb-2'>
+                                <Pagination links={OneTimeExpenses.links} />
+                            </div>
                             <CreateExpensesModal />
                         </div>
                     </div>
                 </div>
             </div>
+            <AmountConversionModal
+                isOpen={isModalOpen}
+                onClose={closeratesModal}
+                amount={selectedAmount}
+                currency={selectedCurrency}
+                rates={rates}
+            />
         </AuthenticatedLayout>
     );
 }

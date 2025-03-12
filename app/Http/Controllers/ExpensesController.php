@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Http;
 use App\Models\Box;
 use App\Models\Saving;
 use App\Models\Expense;
@@ -18,8 +17,9 @@ class ExpensesController extends Controller
     {
         return Inertia::render('Expenses/Expenses', [
             'auth' => auth()->user(),
-            'RecurringExpenses' => Expense::where('user', auth()->id())->where('term', '!=', null)->latest()->get(),
-            'OneTimeExpenses' => Expense::where('user', auth()->id())->where('term', null)->latest()->get()
+            'RecurringExpenses' => Expense::where('user', auth()->id())->where('term', '!=', null)->latest()->paginate(5),
+            'OneTimeExpenses' => Expense::where('user', auth()->id())->where('term', null)->latest()->paginate(3),
+            'rates' => EarningsController::GetRates()
         ]);
     }
 
@@ -37,9 +37,9 @@ class ExpensesController extends Controller
             'nextterm' => 'nullable|numeric'
         ]);
 
-        $response = Http::get('https://ve.dolarapi.com/v1/dolares');
-        $parallel = $response->json()[1]['promedio'];
-        $bcv = $response->json()[0]['promedio'];
+        $rates = EarningsController::GetRates();
+        $parallel = $rates['parallel'];
+        $bcv = $rates['bcv'];
 
         $validated['user'] = auth()->id();
         

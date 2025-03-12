@@ -11,6 +11,11 @@ use App\Models\Saving;
 
 class EarningsController extends Controller
 {
+    public static function GetRates(){
+        $response = Http::get('https://ve.dolarapi.com/v1/dolares');
+
+        return ['parallel' => $response->json()[1]['promedio'], 'bcv' => $response->json()[0]['promedio']];
+    }
     /**
      * Display a listing of the resource.
      */
@@ -18,8 +23,9 @@ class EarningsController extends Controller
     {
         return Inertia::render('Earnings/Earnings', [
             'auth' => auth()->user(),
-            'RecurringEarnings' => Earning::where('user', auth()->id())->where('term', '!=', null)->latest()->get(),
-            'OneTimeEarnings' => Earning::where('user', auth()->id())->where('term', null)->latest()->get()
+            'RecurringEarnings' => Earning::where('user', auth()->id())->where('term', '!=', null)->latest()->paginate(5),
+            'OneTimeEarnings' => Earning::where('user', auth()->id())->where('term', null)->latest()->paginate(3),
+            'rates' => self::GetRates()
         ]);
     }
 
@@ -37,9 +43,9 @@ class EarningsController extends Controller
             'nextterm' => 'nullable|numeric'
         ]);
 
-        $response = Http::get('https://ve.dolarapi.com/v1/dolares');
-        $parallel = $response->json()[1]['promedio'];
-        $bcv = $response->json()[0]['promedio'];
+        $rates = self::GetRates();
+        $parallel = $rates['parallel'];
+        $bcv = $rates['bcv'];
 
         $validated['user'] = auth()->id();
         
@@ -60,7 +66,9 @@ class EarningsController extends Controller
         if(isset($validated['term'])){
             $validated['UpdatedTerm'] = now();
         } else {
-            $validated['OneTimeTase'] = $parallel;
+            if($validated['currency'] != '$'){
+                $validated['OneTimeTase'] = $parallel;
+            }
             $provider->amount += $amount;
             $provider->save();
         }
