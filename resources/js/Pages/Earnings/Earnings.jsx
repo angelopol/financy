@@ -27,7 +27,7 @@ export default function Earnings({ auth, OneTimeEarnings, RecurringEarnings, rat
     RecurringEarnings.data.forEach((earning) => {
         items.push(<Item
             key={earning.id}
-            earning={earning}
+            item={earning}
             Route='earnings.update'
             DestroyRoute='earnings.destroy'
             openRatesModal={openRatesModal}
@@ -54,7 +54,7 @@ export default function Earnings({ auth, OneTimeEarnings, RecurringEarnings, rat
                             {OneTimeEarnings.data.map((earning) => (
                                 <Item
                                     key={earning.id}
-                                    earning={earning}
+                                    item={earning}
                                     Route='earnings.update'
                                     DestroyRoute='earnings.destroy'
                                     openRatesModal={openRatesModal}

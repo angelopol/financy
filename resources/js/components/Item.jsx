@@ -4,6 +4,7 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import EditItemModal from '@/components/EditItemModal';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
+import PurchasedModal from '@/components/PurchasedModal';
 import Dropdown from '@/components/Dropdown';
 dayjs.extend(relativeTime);
 
@@ -22,9 +23,10 @@ const getCurrencyLabel = (currency) => {
     }
 };
 
-export default function Item({ earning, Route, DestroyRoute, openRatesModal }) {
+export default function Item({ item, Route, DestroyRoute, openRatesModal }) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
+    const [isPurchasedModalOpen, setIsPurchasedModalOpen] = useState(false);
 
     const openEditModal = () => {
         setIsEditModalOpen(true);
@@ -42,23 +44,38 @@ export default function Item({ earning, Route, DestroyRoute, openRatesModal }) {
         setIsConfirmDeleteModalOpen(false);
     };
 
+    const openPurchasedModal = () => {
+        setIsPurchasedModalOpen(true);
+    };
+
+    const closePurchasedModal = () => {
+        setIsPurchasedModalOpen(false);
+    };
+
     const handleDelete = () => {
-        Inertia.delete(route(DestroyRoute, earning.id));
+        Inertia.delete(route(DestroyRoute, item.id));
         closeConfirmDeleteModal();
     };
 
+    const handlePending = () => {
+        Inertia.post(route('shoplist.pending', item.id));
+    };
+
     return (
-        <div key={earning.id} className="flex items-center justify-between">
+        <div key={item.id} className="flex items-center justify-between">
             <div>
-                <h3 className="text-lg font-semibold">{earning.description}</h3>
-                <p className="text-sm text-gray-500" onClick={() => openRatesModal(earning.amount, earning.currency ? earning.currency : '$')}>{earning.amount} {earning.currency ? (getCurrencyLabel(earning.currency)) : '$'}</p>
-                {earning.term ? (
-                    <p className="text-sm text-gray-500">Claim cycle of {earning.term} days</p>
-                ) : earning.OneTimeTase ? (
-                    <p className="text-sm text-gray-500">Parallel exchange tase of {earning.OneTimeTase}</p>
+                <h3 className="text-lg font-semibold">{item.description}</h3>
+                <p className="text-sm text-gray-500" onClick={() => openRatesModal(item.amount, item.currency ? item.currency : '$')}>{item.amount} {item.currency ? (getCurrencyLabel(item.currency)) : '$'}</p>
+                {item.term ? (
+                    <p className="text-sm text-gray-500">Claim cycle of {item.term} days</p>
+                ) : item.OneTimeTase ? (
+                    <p className="text-sm text-gray-500">Parallel exchange tase of {item.OneTimeTase}</p>
                 ) : null}
-                <p className="text-sm text-gray-500">Saved in {earning.provider}</p>
-                <p className="text-sm text-gray-500">{dayjs(earning.created_at).fromNow()}</p>
+                <p className="text-sm text-gray-500">Saved in {item.provider}</p>
+                <p className="text-sm text-gray-500">{dayjs(item.created_at).fromNow()}</p>
+                {item.status ? (
+                    <p className={`text-sm ${item.status === 'pending' ? 'text-yellow-500' : item.status === 'purchased' ? 'text-green-500' : 'text-gray-500'}`}>{item.status}</p>
+                ) : null}
             </div>
             <Dropdown>
                 <Dropdown.Trigger>
@@ -71,10 +88,17 @@ export default function Item({ earning, Route, DestroyRoute, openRatesModal }) {
                 <Dropdown.Content>
                     <button className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600" onClick={openEditModal}>Edit</button>
                     <button className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600" onClick={openConfirmDeleteModal}>Delete</button>
+                    {item.status && item.status === "pending" && (
+                        <button className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600" onClick={openPurchasedModal}>Purchased</button>
+                    )}
+                    {item.status && item.status === "purchased" && (
+                        <button className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600" onClick={handlePending}>Pending</button>
+                    )}
                 </Dropdown.Content>
             </Dropdown>
-            <EditItemModal earning={earning} isOpen={isEditModalOpen} onClose={closeEditModal} Route={Route} />
+            <EditItemModal item={item} isOpen={isEditModalOpen} onClose={closeEditModal} Route={Route} amount={item.status ? true : null} />
             <ConfirmDeleteModal isOpen={isConfirmDeleteModalOpen} onClose={closeConfirmDeleteModal} onConfirm={handleDelete} />
+            <PurchasedModal item={item} isOpen={isPurchasedModalOpen} onClose={closePurchasedModal} />
         </div>
     );
 }

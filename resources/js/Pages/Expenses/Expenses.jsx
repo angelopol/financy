@@ -5,7 +5,6 @@ import Item from '@/components/Item';
 import Pagination from '@/components/Pagination';
 import { useState } from 'react';
 import AmountConversionModal from '@/components/AmountConversionModal';
-import { ConvertAmount } from '@/helpers/convertions.js';
 
 export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses, rates }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,12 +26,12 @@ export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses, rat
     RecurringExpenses.data.forEach((expense) => {
         items.push(<Item
             key={expense.id}
-            earning={expense}
+            item={expense}
             Route='expenses.update'
             DestroyRoute='expenses.destroy'
             openRatesModal={openRatesModal}
         />);
-        amount += ConvertAmount(expense.amount, expense.currency, rates);
+        amount += parseFloat(expense.amount);
     });
 
     return (
@@ -57,7 +56,7 @@ export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses, rat
                             {OneTimeExpenses.data.map((expense) => (
                                 <Item
                                     key={expense.id}
-                                    earning={expense}
+                                    item={expense}
                                     Route='expenses.update'
                                     DestroyRoute='expenses.destroy'
                                     openRatesModal={openRatesModal}

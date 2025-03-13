@@ -53,7 +53,7 @@ class ExpensesController extends Controller
 
         if($validated['provider'] == 'box'){
             $provider = Box::where('user', auth()->id())->first();
-        } elseif ($validated['provider'] == 'savings') {
+        } else {
             $provider = Saving::where('user', auth()->id())->first();
         }
 

@@ -21,4 +21,6 @@ class ShopListItem extends Model
         'provider',
         'status'
     ];
+
+    protected $table = 'shop_list_items';
 }

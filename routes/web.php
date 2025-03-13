@@ -39,10 +39,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/shop-list', [ShopListController::class, 'store'])->name('shoplist.store');
     Route::get('/shop-list', [ShopListController::class, 'index'])->name('shoplist.index');
-    Route::patch('/shop-list/{id}', [ShopListController::class, 'update'])->name('shoplist.update');
-    Route::delete('/shop-list/{id}', [ShopListController::class, 'destroy'])->name('shoplist.destroy');
-    Route::post('/shop-list/{id}/purchase', [ShopListController::class, 'purchase'])->name('shoplist.purchase');
-    Route::post('/shop-list/{id}/pending', [ShopListController::class, 'pending'])->name('shoplist.pending');
+    Route::patch('/shop-list/{ShopListItem}', [ShopListController::class, 'update'])->name('shoplist.update');
+    Route::delete('/shop-list/{ShopListItem}', [ShopListController::class, 'destroy'])->name('shoplist.destroy');
+    Route::post('/shop-list/{ShopListItem}/purchase', [ShopListController::class, 'purchase'])->name('shoplist.purchased');
+    Route::post('/shop-list/{ShopListItem}/pending', [ShopListController::class, 'pending'])->name('shoplist.pending');
 
     Route::get('/dashboard', [DashboardController::class, 'ShowDashboard'])->name('dashboard');
     Route::get('/savings', [DashboardController::class, 'ShowSavings'])->name('savings.show');

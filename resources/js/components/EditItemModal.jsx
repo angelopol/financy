@@ -1,28 +1,36 @@
-import { useState } from 'react';
 import Modal from '@/Components/Modal';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import PrimaryButton from '@/Components/PrimaryButton';
+import SelectInput from '@/Components/SelectInput';
 import { useForm } from '@inertiajs/react';
 
-export default function EditItemModal({ earning, isOpen, onClose, Route }) {
-    const { data, setData, patch, processing, errors } = useForm({
-        description: earning.description,
-    });
+export default function EditItemModal({ item, isOpen, onClose, Route, amount = null }) {
+    let values = {
+        description: item.description,
+    };
+    if (amount) {
+        values = {
+            ...values,
+            amount: item.amount,
+            currency: "$",
+        };
+    }
+    const { data, setData, patch, processing, errors } = useForm(values);
 
     const submit = (e) => {
         e.preventDefault();
-        patch(route(Route, earning.id), {
+        patch(route(Route, item.id), {
             onSuccess: () => onClose(),
         });
     };
 
     return (
         <Modal show={isOpen} onClose={onClose}>
-            <form onSubmit={submit} className="p-6">
-                <h3 className="text-lg font-medium leading-6 text-white">Edit Description</h3>
-                <div className="mt-2">
+            <form onSubmit={submit} className="p-6 space-y-6">
+                <h3 className="text-lg font-medium leading-6 text-white">Edit Item</h3>
+                <div>
                     <InputLabel htmlFor="description" value="Description" />
                     <TextInput
                         id="description"
@@ -34,6 +42,35 @@ export default function EditItemModal({ earning, isOpen, onClose, Route }) {
                     />
                     <InputError message={errors.description} className="mt-2" />
                 </div>
+                {amount && (
+                    <>
+                        <div>
+                            <InputLabel htmlFor="amount" value="Amount" />
+                            <TextInput
+                                id="amount"
+                                value={data.amount}
+                                onChange={(e) => setData('amount', e.target.value)}
+                                type="number"
+                                className="mt-1 block w-full"
+                            />
+                            <InputError message={errors.amount} className="mt-2" />
+                        </div>
+                        <div>
+                            <InputLabel htmlFor="currency" value="Currency" />
+                            <SelectInput
+                                id="currency"
+                                value={data.currency}
+                                onChange={(e) => setData('currency', e.target.value)}
+                                className="mt-1 block w-full"
+                            >
+                                <option value="$">Dollar</option>
+                                <option value="bs">Bolivares</option>
+                                <option value="$bcv">Dollars in bolivares indexed in BCV</option>
+                            </SelectInput>
+                            <InputError message={errors.currency} className="mt-2" />
+                        </div>
+                    </>
+                )}
                 <div className="mt-4 flex justify-end">
                     <PrimaryButton disabled={processing}>Save</PrimaryButton>
                     <PrimaryButton onClick={onClose} className="ml-2">Close</PrimaryButton>

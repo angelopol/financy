@@ -51,16 +51,16 @@ class ShopListPolicy
     /**
      * Determine whether the user can restore the model.
      */
-    public function restore(User $user, ShopListItem $shopListItem): bool
+    public function purchased(User $user, ShopListItem $shopListItem): bool
     {
-        //
+        return $this->update($user, $shopListItem) && $shopListItem->status === 'pending';
     }
 
     /**
      * Determine whether the user can permanently delete the model.
      */
-    public function forceDelete(User $user, ShopListItem $shopListItem): bool
+    public function pending(User $user, ShopListItem $shopListItem): bool
     {
-        //
+        return $this->update($user, $shopListItem) && $shopListItem->status === 'purchased';
     }
 }
