@@ -41,18 +41,11 @@ class ShopListController extends Controller
 
         $validated['user'] = auth()->id();
         $validated['status'] = 'pending';
-        
-        if($validated['currency'] == '$bcv'){
-            $validated['amount'] = ($validated['amount'] * $bcv) / $parallel;
-        } elseif ($validated['currency'] == 'bs') {
-            $validated['amount'] = $validated['amount'] / $parallel;
-        } else {
-            $validated['amount'] = $validated['amount'];
-        }
+        $validated['amount'] = EarningsController::ConvertAmount($validated['currency'], $validated['amount'], $parallel, $bcv);
 
         $request->user()->ShopListItems()->create($validated);
 
-        return redirect(route('shoplist.index'));
+        return back();
     }
 
     /**
@@ -72,13 +65,7 @@ class ShopListController extends Controller
             $rates = EarningsController::GetRates();
             $parallel = $rates['parallel'];
             $bcv = $rates['bcv'];
-            if($validated['currency'] == '$bcv'){
-                $validated['amount'] = ($validated['amount'] * $bcv) / $parallel;
-            } elseif ($validated['currency'] == 'bs') {
-                $validated['amount'] = $validated['amount'] / $parallel;
-            } else {
-                $validated['amount'] = $validated['amount'];
-            }
+            $validated['amount'] = EarningsController::ConvertAmount($validated['currency'], $validated['amount'], $parallel, $bcv);
         }
 
         foreach($validated as $key => $value){
@@ -89,7 +76,7 @@ class ShopListController extends Controller
 
         $ShopListItem->update($validated);
 
-        return redirect(route('shoplist.index'));
+        return back();
     }
 
     /**
@@ -101,7 +88,7 @@ class ShopListController extends Controller
 
         $ShopListItem->delete();
 
-        return redirect(route('shoplist.index'));
+        return back();
     }
 
     public function purchase(Request $request, ShopListItem $ShopListItem)
@@ -124,7 +111,7 @@ class ShopListController extends Controller
         $ShopListItem->status = 'purchased';
         $ShopListItem->save();
 
-        return redirect(route('shoplist.index'));
+        return back();
     }
 
     public function pending(ShopListItem $ShopListItem)
@@ -139,9 +126,10 @@ class ShopListController extends Controller
         $provider->amount += $ShopListItem->amount;
         $provider->save();
 
+        $ShopListItem->provider = null;
         $ShopListItem->status = 'pending';
         $ShopListItem->save();
 
-        return redirect(route('shoplist.index'));
+        return back();
     }
 }

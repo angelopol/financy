@@ -47,11 +47,12 @@ export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses, rat
                         <div className="p-6">
                             {items}
                             {RecurringExpenses.data.length > 0 && (
-                                <div className="p-1">
-                                    <Pagination links={RecurringExpenses.links} />
-                                </div>
-                            ) && (
-                                <span className="text-sm text-gray-500 flex justify-end cursor-pointer" onClick={() => openRatesModal(amount, '$')}>Total amount: {amount}$</span>
+                                <>
+                                    <div className="p-1">
+                                        <Pagination links={RecurringExpenses.links} />
+                                    </div>
+                                    <span className="text-sm text-gray-500 flex justify-end cursor-pointer" onClick={() => openRatesModal(amount, '$')}>Total amount: {amount}$</span>
+                                </>
                             )}
                             {OneTimeExpenses.data.map((expense) => (
                                 <Item
@@ -62,9 +63,12 @@ export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses, rat
                                     openRatesModal={openRatesModal}
                                 />
                             ))}
-                            <div className='pt-1 pb-2'>
-                                <Pagination links={OneTimeExpenses.links} />
-                            </div>
+                            {OneTimeExpenses.data.length > 0 && (
+                                <div className='pt-1'>
+                                    <Pagination links={OneTimeExpenses.links} />
+                                </div>
+                            )}
+                            <br />
                             <CreateExpensesModal />
                         </div>
                     </div>

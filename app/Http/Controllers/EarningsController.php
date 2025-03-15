@@ -21,6 +21,15 @@ class EarningsController extends Controller
 
         return ['parallel' => $response->json()[1]['promedio'], 'bcv' => $response->json()[0]['promedio']];
     }
+
+    public static function ConvertAmount($currency, $amount, $parallel, $bcv){
+        if($currency == '$bcv'){
+            $amount = ($amount * $bcv) / $parallel;
+        } elseif ($currency == 'bs') {
+            $amount = $amount / $parallel;
+        }
+        return $amount;
+    }
     /**
      * Display a listing of the resource.
      */
@@ -54,13 +63,7 @@ class EarningsController extends Controller
 
         $validated['user'] = auth()->id();
         
-        if($validated['currency'] == '$bcv'){
-            $amount = ($validated['amount'] * $bcv) / $parallel;
-        } elseif ($validated['currency'] == 'bs') {
-            $amount = $validated['amount'] / $parallel;
-        } else {
-            $amount = $validated['amount'];
-        }
+        $amount = self::ConvertAmount($validated['currency'], $validated['amount'], $parallel, $bcv);
 
         if($validated['provider'] == 'box'){
             $provider = Box::where('user', auth()->id())->first();
@@ -84,7 +87,7 @@ class EarningsController extends Controller
 
         $request->user()->earnings()->create($validated);
 
-        return redirect(route('earnings.index'));
+        return back();
     }
 
     /**
@@ -100,7 +103,7 @@ class EarningsController extends Controller
 
         $earning->update($validated);
 
-        return redirect(route('earnings.index'));
+        return back();
     }
 
     /**
@@ -112,6 +115,6 @@ class EarningsController extends Controller
 
         $earning->delete();
 
-        return redirect(route('earnings.index'));
+        return back();
     }
 }

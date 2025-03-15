@@ -47,10 +47,14 @@ export default function Earnings({ auth, OneTimeEarnings, RecurringEarnings, rat
                     <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6">
                             {items}
-                            <span className="text-sm text-gray-500 flex justify-end cursor-pointer" onClick={() => openRatesModal(amount, '$')}>Total amount: {amount}$</span>
-                            <div>
-                                <Pagination links={RecurringEarnings.links} />                               
-                            </div>
+                            {RecurringEarnings.data.length > 0 && (
+                                <>
+                                    <span className="text-sm text-gray-500 flex justify-end cursor-pointer" onClick={() => openRatesModal(amount, '$')}>Total amount: {amount}$</span>
+                                    <div>
+                                        <Pagination links={RecurringEarnings.links} />                               
+                                    </div>
+                                </>
+                            )}
                             {OneTimeEarnings.data.map((earning) => (
                                 <Item
                                     key={earning.id}
@@ -60,9 +64,12 @@ export default function Earnings({ auth, OneTimeEarnings, RecurringEarnings, rat
                                     openRatesModal={openRatesModal}
                                 />
                             ))}
-                            <div className='pt-1 pb-2'>
-                                <Pagination links={OneTimeEarnings.links} />
-                            </div>
+                            {OneTimeEarnings.data.length > 0 && (
+                                <div className='pt-1'>
+                                    <Pagination links={OneTimeEarnings.links} />
+                                </div>
+                            )}
+                            <br />
                             <CreateEarningModal />
                         </div>
                         

@@ -49,11 +49,12 @@ export default function ShopList({ auth, ShopListItems, rates }) {
                             {ShopListItems.data.length > 0 && (
                                 <>
                                     <span className="text-sm text-gray-500 flex justify-end cursor-pointer mb-2" onClick={() => openRatesModal(amount, '$')}>Total amount: {amount}$</span>
-                                    <div className="pb-2">
+                                    <div>
                                         <Pagination links={ShopListItems.links} />
                                     </div>
                                 </>
                             )}
+                            <br />
                             <CreateShopListItemModal />
                         </div>
                     </div>

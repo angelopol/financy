@@ -42,14 +42,7 @@ class ExpensesController extends Controller
         $bcv = $rates['bcv'];
 
         $validated['user'] = auth()->id();
-        
-        if($validated['currency'] == '$bcv'){
-            $validated['amount'] = ($validated['amount'] * $bcv) / $parallel;
-        } elseif ($validated['currency'] == 'bs') {
-            $validated['amount'] = $validated['amount'] / $parallel;
-        } else {
-            $validated['amount'] = $validated['amount'];
-        }
+        $validated['amount'] = EarningsController::ConvertAmount($validated['currency'], $validated['amount'], $parallel, $bcv);
 
         if($validated['provider'] == 'box'){
             $provider = Box::where('user', auth()->id())->first();
@@ -70,7 +63,7 @@ class ExpensesController extends Controller
 
         $request->user()->expenses()->create($validated);
 
-        return redirect(route('expenses.index'));
+        return back();
     }
 
     /**
@@ -86,7 +79,7 @@ class ExpensesController extends Controller
 
         $expense->update($validated);
 
-        return redirect(route('expenses.index'));
+        return back();
     }
 
     /**
@@ -98,6 +91,6 @@ class ExpensesController extends Controller
 
         $expense->delete();
 
-        return redirect(route('expenses.index'));
+        return back();
     }
 }
