@@ -12,13 +12,20 @@ use App\Models\Box;
 
 class DashboardController extends Controller
 {
-    private function GetItems($provider){
+    private function GetItems($provider, $GetOneTime = true){
         $RecurringEarnings = Earning::where('user', auth()->id())->where('term', '!=', null)->where('provider', $provider)->latest()->paginate(5);
-        $OneTimeEarnings = Earning::where('user', auth()->id())->where('term', null)->where('provider', $provider)->latest()->paginate(3);
         $RecurringExpenses = Expense::where('user', auth()->id())->where('term', '!=', null)->where('provider', $provider)->latest()->paginate(5);
-        $OneTimeExpenses = Expense::where('user', auth()->id())->where('term', null)->where('provider', $provider)->latest()->paginate(3);
-        $ShopListItems = ShopListItem::where('user', auth()->id())->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
-            ->where('provider', $provider)->latest()->paginate(10);
+        
+        if($GetOneTime){
+            $OneTimeEarnings = Earning::where('user', auth()->id())->where('term', null)->where('provider', $provider)->latest()->paginate(3);
+            $OneTimeExpenses = Expense::where('user', auth()->id())->where('term', null)->where('provider', $provider)->latest()->paginate(3);
+            $ShopListItems = ShopListItem::where('user', auth()->id())->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+                ->where('provider', $provider)->latest()->paginate(10);
+        } else {
+            $OneTimeEarnings = null;
+            $OneTimeExpenses = null;
+            $ShopListItems = null;
+        }
 
         $TotalRecurringEarnings = 0;
         $rates = EarningsController::GetRates();
@@ -43,8 +50,8 @@ class DashboardController extends Controller
 
     public function ShowDashboard()
     {
-        [$auth, $rates, $RecurringEarnings, $OneTimeEarnings, $RecurringExpenses, $OneTimeExpenses, $ShopListItems, $ExpectedBox] = array_values($this->GetItems('box'));
-        [$auth, $rates, $RecurringEarnings, $OneTimeEarnings, $RecurringExpenses, $OneTimeExpenses, $ShopListItems, $ExpectedSavings] = array_values($this->GetItems('savings'));
+        [$auth, $rates, $RecurringEarnings, $OneTimeEarnings, $RecurringExpenses, $OneTimeExpenses, $ShopListItems, $ExpectedBox] = array_values($this->GetItems('box', false));
+        [$auth, $rates, $RecurringEarnings, $OneTimeEarnings, $RecurringExpenses, $OneTimeExpenses, $ShopListItems, $ExpectedSavings] = array_values($this->GetItems('savings', false));
         return Inertia::render('Dashboard', [
             'savings' => Saving::where('user', auth()->id())->value('amount'),
             'box' => Box::where('user', auth()->id())->value('amount'),

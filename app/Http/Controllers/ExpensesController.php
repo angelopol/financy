@@ -75,6 +75,8 @@ class ExpensesController extends Controller
 
         if(isset($validated['nextterm'])){
             $validated['NextClaim'] = $validated['nextterm'];
+        } else {
+            $validated['NextClaim'] = $validated['term'];
         }
 
         $request->user()->expenses()->create($validated);

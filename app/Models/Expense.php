@@ -20,7 +20,7 @@ class Expense extends Model
         'amount',
         'provider',
         'term',
-        'NextTerm',
+        'NextClaim',
         'UpdatedTerm'
     ];
 }

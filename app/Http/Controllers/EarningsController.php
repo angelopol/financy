@@ -83,6 +83,8 @@ class EarningsController extends Controller
 
         if(isset($validated['nextterm'])){
             $validated['NextClaim'] = $validated['nextterm'];
+        } else {
+            $validated['NextClaim'] = $validated['term'];
         }
 
         $request->user()->earnings()->create($validated);
