@@ -1,7 +1,7 @@
 import Item from '@/components/Item.jsx';
 import Pagination from '@/components/Pagination';
 import PrimaryButton from '@/components/PrimaryButton';
-import { Inertia } from '@inertiajs/inertia';
+import { Link } from '@inertiajs/react';
 
 function renderItems(Items, openRatesModal) {
     const items = [];
@@ -36,10 +36,6 @@ function renderItems(Items, openRatesModal) {
     );
 }
 
-const handleAddMoneyClick = (Route) => {
-    Inertia.get(route(Route));
-};
-
 export default function ShowItems({ setActiveTab, activeTab, openRatesModal, RecurringEarnings, OneTimeEarnings, RecurringExpenses, OneTimeExpenses, ShopListItems }) {
     return (
         <>
@@ -68,38 +64,32 @@ export default function ShowItems({ setActiveTab, activeTab, openRatesModal, Rec
                     <>
                         {renderItems(RecurringEarnings, openRatesModal)}
                         {renderItems(OneTimeEarnings, openRatesModal)}
-                        <div className="flex justify-end mt-4">
-                            <PrimaryButton
-                                onClick={() => handleAddMoneyClick('earnings.index')}
-                            >
+                        <Link className="flex justify-end mt-4" href={route('earnings.index')}>
+                            <PrimaryButton>
                                 ADD EARNING TO SAVINGS
                             </PrimaryButton>
-                        </div>
+                        </Link>
                     </>
                 )}
                 {activeTab === 'expenses' && (
                     <>
                         {renderItems(RecurringExpenses, openRatesModal)}
                         {renderItems(OneTimeExpenses, openRatesModal)}
-                        <div className="flex justify-end mt-4">
-                            <PrimaryButton
-                                onClick={() => handleAddMoneyClick('expenses.index')}
-                            >
+                        <Link className="flex justify-end mt-4" href={route('expenses.index')}>
+                            <PrimaryButton>
                                 ADD EXPENSE TO SAVINGS
                             </PrimaryButton>
-                        </div>
+                        </Link>
                     </>
                 )}
                 {activeTab === 'shopListItems' && (
                     <>
                         {renderItems(ShopListItems, openRatesModal)}
-                        <div className="flex justify-end mt-4">
-                            <PrimaryButton
-                                onClick={() => handleAddMoneyClick('shoplist.index')}
-                            >
+                        <Link className="flex justify-end mt-4" href={route('shoplist.index')}>
+                            <PrimaryButton>
                                 ADD SHOP LIST ITEM TO SAVINGS
                             </PrimaryButton>
-                        </div>
+                        </Link>
                     </>
                 )}
             </div>

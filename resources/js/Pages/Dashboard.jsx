@@ -2,6 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import { useState } from 'react';
 import AmountConversionModal from '@/components/AmountConversionModal';
+import { Link } from '@inertiajs/react';
 
 export default function Dashboard({ auth, rates, savings, box, ExpectedSavings, ExpectedBox }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,7 +29,7 @@ export default function Dashboard({ auth, rates, savings, box, ExpectedSavings, 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                        <Link className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg" href={route('savings.show')}>
                             <div className="p-6 text-gray-900 dark:text-gray-100">
                                 <h3 className="text-lg font-semibold">Savings</h3>
                                 <p className="text-2xl mt-2">
@@ -36,9 +37,9 @@ export default function Dashboard({ auth, rates, savings, box, ExpectedSavings, 
                                     <span onClick={() => openRatesModal(parseFloat(savings)+parseFloat(ExpectedSavings), '$')}>{ExpectedSavings < 0 ? '-' : '+'} {Math.abs(ExpectedSavings)}$</span>
                                 </p>
                             </div>
-                        </div>
+                        </Link>
 
-                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                        <Link className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg" href={route('box.show')}>
                             <div className="p-6 text-gray-900 dark:text-gray-100">
                                 <h3 className="text-lg font-semibold">Box</h3>
                                 <p className="text-2xl mt-2">
@@ -46,7 +47,7 @@ export default function Dashboard({ auth, rates, savings, box, ExpectedSavings, 
                                     <span onClick={() => openRatesModal(parseFloat(box)+parseFloat(ExpectedBox), '$')}>{ExpectedBox < 0 ? '-' : '+'} {Math.abs(ExpectedBox)}$</span>
                                 </p>
                             </div>
-                        </div>
+                        </Link>
 
                         <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                             <div className="p-6 text-gray-900 dark:text-gray-100">
