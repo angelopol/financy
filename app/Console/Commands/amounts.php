@@ -31,20 +31,19 @@ class amounts extends Command
     public function handle()
     {
         $RecurringEarnings = Earning::where('term', '!=', null)
-            ->whereRaw('DATE_ADD(UpdatedTerm, INTERVAL NextClaim DAY) <= CURDATE()')
+            ->whereRaw('DATE_ADD(UpdatedTerm, INTERVAL NextClaim DAY) >= CURDATE()')
             ->get();
-
         $RecurringExpenses = Expense::where('term', '!=', null)
-            ->whereRaw('DATE_ADD(UpdatedTerm, INTERVAL NextClaim DAY) <= CURDATE()')
+            ->whereRaw('DATE_ADD(UpdatedTerm, INTERVAL NextClaim DAY) >= CURDATE()')
             ->get();
-
         foreach ($RecurringEarnings as $earning) {
             if ($earning->provider == 'box') {
-                $provider = Box::where('user', auth()->id())->first();
+                $provider = Box::where('user', $earning->user)->first();
             } else {
-                $provider = Saving::where('user', auth()->id())->first();
+                $provider = Saving::where('user', $earning->user)->first();
             }
             $provider->amount += $earning->amount;
+            $provider->save();
             $earning->NextClaim = $earning->term;
             $earning->UpdatedTerm = now();
             $earning->save();
@@ -52,11 +51,11 @@ class amounts extends Command
     
         foreach ($RecurringExpenses as $expense) {
             if ($expense->provider == 'box') {
-                $provider = Box::where('user', auth()->id())->first();
-                $otherProvider = Saving::where('user', auth()->id())->first();
+                $provider = Box::where('user', $expense->user)->first();
+                $otherProvider = Saving::where('user', $expense->user)->first();
             } else {
-                $provider = Saving::where('user', auth()->id())->first();
-                $otherProvider = Box::where('user', auth()->id())->first();
+                $provider = Saving::where('user', $expense->user)->first();
+                $otherProvider = Box::where('user', $expense->user)->first();
             }
             ExpensesController::SubtractProvider($provider, $otherProvider, $expense->amount);
             $expense->NextClaim = $expense->term;
