@@ -10,6 +10,21 @@ use App\Models\Expense;
 
 class ExpensesController extends Controller
 {
+    public static function SubtractProvider($provider, $otherProvider, $amount){
+        $provider->amount -= $amount;
+        if ($provider->amount < 0) {
+            $deficit = abs($provider->amount);
+            if ($otherProvider->amount >= $deficit) {
+                $otherProvider->amount -= $deficit;
+                $provider->amount = 0;
+            } else {
+                $provider->amount += $otherProvider->amount;
+                $otherProvider->amount = 0;
+            }
+            $otherProvider->save();
+        }
+        $provider->save();
+    }
     /**
      * Display a listing of the resource.
      */
@@ -44,17 +59,18 @@ class ExpensesController extends Controller
         $validated['user'] = auth()->id();
         $validated['amount'] = EarningsController::ConvertAmount($validated['currency'], $validated['amount'], $parallel, $bcv);
 
-        if($validated['provider'] == 'box'){
+        if ($validated['provider'] == 'box') {
             $provider = Box::where('user', auth()->id())->first();
+            $otherProvider = Saving::where('user', auth()->id())->first();
         } else {
             $provider = Saving::where('user', auth()->id())->first();
+            $otherProvider = Box::where('user', auth()->id())->first();
         }
 
         if(isset($validated['term'])){
             $validated['UpdatedTerm'] = now();
         } else {
-            $provider->amount -= $validated['amount'];
-            $provider->save();
+            $this::SubtractProvider($provider, $otherProvider, $validated['amount']);
         }
 
         if(isset($validated['nextterm'])){

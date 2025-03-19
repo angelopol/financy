@@ -31,7 +31,10 @@ export default function Box({ auth, rates, RecurringEarnings, OneTimeEarnings, R
             user={auth}
             header={
                 <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                    Box <span className='text-green-200'>{box}$ {ExpectedSavings < 0 ? '-' : '+'} {Math.abs(ExpectedSavings)}$</span>
+                    Box <span className='text-green-200'>
+                        <span onClick={() => openRatesModal(box, '$')}>{box}$</span> 
+                        <span onClick={() => openRatesModal(parseFloat(box)+parseFloat(ExpectedSavings), '$')}>{ExpectedSavings < 0 ? '-' : '+'} {Math.abs(ExpectedSavings)}$</span>
+                    </span>
                 </h2>
             }
         >

@@ -25,7 +25,10 @@ export default function Savings({ auth, rates, RecurringEarnings, OneTimeEarning
             user={auth}
             header={
                 <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                    Savings <span className='text-green-200'>{savings}$ {ExpectedSavings < 0 ? '-' : '+'} {Math.abs(ExpectedSavings)}$</span>
+                    Savings <span className='text-green-200'>
+                        <span onClick={() => openRatesModal(savings, '$')}>{savings}$</span> 
+                        <span onClick={() => openRatesModal(parseFloat(savings)+parseFloat(ExpectedSavings), '$')}>{ExpectedSavings < 0 ? '-' : '+'} {Math.abs(ExpectedSavings)}$</span>
+                    </span>
                 </h2>
             }
         >

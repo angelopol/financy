@@ -43,7 +43,16 @@ class DashboardController extends Controller
 
     public function ShowDashboard()
     {
-        return Inertia::render('Dashboard');
+        [$auth, $rates, $RecurringEarnings, $OneTimeEarnings, $RecurringExpenses, $OneTimeExpenses, $ShopListItems, $ExpectedBox] = array_values($this->GetItems('box'));
+        [$auth, $rates, $RecurringEarnings, $OneTimeEarnings, $RecurringExpenses, $OneTimeExpenses, $ShopListItems, $ExpectedSavings] = array_values($this->GetItems('savings'));
+        return Inertia::render('Dashboard', [
+            'savings' => Saving::where('user', auth()->id())->value('amount'),
+            'box' => Box::where('user', auth()->id())->value('amount'),
+            'ExpectedBox' => $ExpectedBox,
+            'ExpectedSavings' => $ExpectedSavings,
+            'auth' => $auth,
+            'rates' => $rates
+        ]);
     }
 
     public function ShowSavings()
