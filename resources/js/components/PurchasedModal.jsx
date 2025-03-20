@@ -1,8 +1,8 @@
-import Modal from '@/Components/Modal';
-import PrimaryButton from '@/Components/PrimaryButton';
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import SelectInput from '@/Components/SelectInput';
+import Modal from '@/components/Modal';
+import PrimaryButton from '@/components/PrimaryButton';
+import InputError from '@/components/InputError';
+import InputLabel from '@/components/InputLabel';
+import SelectInput from '@/components/SelectInput';
 import { useForm } from '@inertiajs/react';
 
 export default function PurchasedModal({ isOpen, onClose, item }) {

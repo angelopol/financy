@@ -1,6 +1,6 @@
-import Modal from '@/Components/Modal';
-import PrimaryButton from '@/Components/PrimaryButton';
-import SecondaryButton from '@/Components/SecondaryButton';
+import Modal from '@/components/Modal';
+import PrimaryButton from '@/components/PrimaryButton';
+import SecondaryButton from '@/components/SecondaryButton';
 
 export default function ConfirmDeleteModal({ isOpen, onClose, onConfirm }) {
     return (

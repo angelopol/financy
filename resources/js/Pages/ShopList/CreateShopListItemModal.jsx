@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import CreateShopListItemForm from './CreateShopListItemForm';
-import PrimaryButton from '@/Components/PrimaryButton';
-import Modal from '@/Components/Modal';
+import PrimaryButton from '@/components/PrimaryButton';
+import Modal from '@/components/Modal';
 
 export default function CreateShopListItemModal() {
     const [isOpen, setIsOpen] = useState(false);

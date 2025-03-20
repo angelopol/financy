@@ -1,9 +1,9 @@
-import Modal from '@/Components/Modal';
-import InputLabel from '@/Components/InputLabel';
-import TextInput from '@/Components/TextInput';
-import InputError from '@/Components/InputError';
-import PrimaryButton from '@/Components/PrimaryButton';
-import SelectInput from '@/Components/SelectInput';
+import Modal from '@/components/Modal';
+import InputLabel from '@/components/InputLabel';
+import TextInput from '@/components/TextInput';
+import InputError from '@/components/InputError';
+import PrimaryButton from '@/components/PrimaryButton';
+import SelectInput from '@/components/SelectInput';
 import { useForm } from '@inertiajs/react';
 
 export default function EditItemModal({ item, isOpen, onClose, Route, amount = null }) {

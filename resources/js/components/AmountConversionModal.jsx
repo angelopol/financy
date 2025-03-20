@@ -1,5 +1,5 @@
-import Modal from '@/Components/Modal';
-import SecondaryButton from '@/Components/SecondaryButton';
+import Modal from '@/components/Modal';
+import SecondaryButton from '@/components/SecondaryButton';
 import { GetDollarRates, ConvertAmount } from '@/helpers/convertions';
 
 export default function AmountConversionModal({ isOpen, onClose, amount, currency, rates }) {
