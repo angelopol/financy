@@ -99,13 +99,14 @@ class ShopListController extends Controller
             'provider' => 'required|string|in:box,savings'
         ]);
 
-        if($validated['provider'] == 'box'){
+        if($ShopListItem->provider == 'box'){
             $provider = Box::where('user', auth()->id())->first();
+            $otherProvider = Saving::where('user', auth()->id())->first();
         } else {
             $provider = Saving::where('user', auth()->id())->first();
+            $otherProvider = Box::where('user', auth()->id())->first();
         }
-        $provider->amount -= $ShopListItem->amount;
-        $provider->save();
+        ExpensesController::SubtractProvider($provider, $otherProvider, $ShopListItem->amount);
 
         $ShopListItem->provider = $validated['provider'];
         $ShopListItem->status = 'purchased';
@@ -120,12 +121,9 @@ class ShopListController extends Controller
 
         if($ShopListItem->provider == 'box'){
             $provider = Box::where('user', auth()->id())->first();
-            $otherProvider = Saving::where('user', auth()->id())->first();
         } else {
             $provider = Saving::where('user', auth()->id())->first();
-            $otherProvider = Box::where('user', auth()->id())->first();
         }
-        ExpensesController::SubtractProvider($provider, $otherProvider, $ShopListItem->amount);
         $provider->amount += $ShopListItem->amount;
         $provider->save();
 
