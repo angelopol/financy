@@ -1,66 +1,60 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# FINANCY
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+FINANCY es una aplicación para gestionar las finanzas personales de los usuarios. Permite a los usuarios registrar y gestionar sus ingresos, gastos, ahorros y listas de compras. La aplicación está construida utilizando una combinación de tecnologías modernas como React, Inertia.js, Laravel, Tailwind CSS y MySQL.
 
-## About Laravel
+## Tecnologías Utilizadas
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **React**: Utilizado para construir la interfaz de usuario interactiva.
+- **Inertia.js**: Facilita la integración entre Laravel y React, permitiendo construir aplicaciones de una sola página (SPA) sin necesidad de una API separada.
+- **Laravel**: Framework de PHP utilizado para manejar la lógica del servidor y las operaciones de base de datos.
+- **Tailwind CSS**: Framework de CSS utilizado para diseñar la interfaz de usuario.
+- **MySQL**: Base de datos utilizada para almacenar la información de los usuarios.
+- **Cron de Laravel**: Utilizado para ejecutar tareas programadas, como la actualización de ingresos y gastos recurrentes.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Estructura del Proyecto
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Modelos
 
-## Learning Laravel
+- **Earning**: Representa los ingresos de los usuarios. Puede ser recurrente o único.
+- **Expense**: Representa los gastos de los usuarios. Puede ser recurrente o único.
+- **Box**: Representa una caja de ahorros específica del usuario.
+- **Saving**: Representa los ahorros generales del usuario.
+- **ShopListItem**: Representa los ítems en la lista de compras del usuario.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Migraciones
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Las migraciones se utilizan para definir la estructura de las tablas en la base de datos. Algunas de las migraciones clave incluyen:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- **create_earnings_table**: Define la estructura de la tabla de ingresos.
+- **create_expenses_table**: Define la estructura de la tabla de gastos.
+- **create_boxes_table**: Define la estructura de la tabla de cajas.
+- **create_savings_table**: Define la estructura de la tabla de ahorros.
+- **create_shop_list_items_table**: Define la estructura de la tabla de ítems de la lista de compras.
 
-## Laravel Sponsors
+### Controladores
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Los controladores manejan la lógica de la aplicación y las interacciones del usuario. Algunos de los controladores clave incluyen:
 
-### Premium Partners
+- **EarningsController**: Maneja las operaciones relacionadas con los ingresos, como la creación, actualización y eliminación de ingresos.
+- **ExpensesController**: Maneja las operaciones relacionadas con los gastos, como la creación, actualización y eliminación de gastos.
+- **DashboardController**: Muestra el tablero principal con un resumen de las finanzas del usuario.
+- **ShopListController**: Maneja las operaciones relacionadas con la lista de compras, como la creación, actualización y eliminación de ítems de la lista de compras.
+- **ProfileController**: Maneja las operaciones relacionadas con el perfil del usuario, como la edición y eliminación del perfil.
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+### Rutas
 
-## Contributing
+Las rutas definen los endpoints de la aplicación y los controladores que manejan las solicitudes a esos endpoints. Algunas de las rutas clave incluyen:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- **/dashboard**: Muestra el tablero principal.
+- **/earnings**: Muestra y maneja las operaciones relacionadas con los ingresos.
+- **/expenses**: Muestra y maneja las operaciones relacionadas con los gastos.
+- **/shop-list**: Muestra y maneja las operaciones relacionadas con la lista de compras.
+- **/profile**: Muestra y maneja las operaciones relacionadas con el perfil del usuario.
 
-## Code of Conduct
+### Plantilla de Autenticación de Laravel
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+FINANCY utiliza la plantilla de autenticación proporcionada por Laravel para manejar el registro, inicio de sesión y gestión de usuarios. Esta plantilla incluye componentes de React para los formularios de autenticación y utiliza Inertia.js para manejar las transiciones de página sin recargar la página completa.
 
-## Security Vulnerabilities
+### Tareas Programadas
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+La aplicación utiliza el cron de Laravel para ejecutar tareas programadas, como la actualización de ingresos y gastos recurrentes. Estas tareas se definen en el comando `amounts:cron` y se ejecutan periódicamente para mantener actualizadas las finanzas del usuario.
