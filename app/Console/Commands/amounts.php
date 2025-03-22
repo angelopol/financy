@@ -32,7 +32,7 @@ class amounts extends Command
     public function handle()
     {
         $RecurringEarnings = Earning::where('term', '!=', null)
-            ->whereRaw('DATE_ADD(UpdatedTerm, INTERVAL NextClaim DAY) =< ?', [now()])
+            ->whereRaw('DATE_ADD(UpdatedTerm, INTERVAL NextClaim DAY) <= ?', [now()])
             ->get();
         
         $RecurringExpenses = Expense::where('term', '!=', null)
