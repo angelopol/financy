@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Http\Controllers\EarningsController;
 use Illuminate\Console\Command;
 use App\Models\Earning;
 use App\Models\Expense;
@@ -31,18 +32,23 @@ class amounts extends Command
     public function handle()
     {
         $RecurringEarnings = Earning::where('term', '!=', null)
-            ->whereRaw('DATE_ADD(UpdatedTerm, INTERVAL NextClaim DAY) >= CURDATE()')
+            ->whereRaw('DATE_ADD(UpdatedTerm, INTERVAL NextClaim DAY) >= ?', [now()])
             ->get();
+        
         $RecurringExpenses = Expense::where('term', '!=', null)
-            ->whereRaw('DATE_ADD(UpdatedTerm, INTERVAL NextClaim DAY) >= CURDATE()')
+            ->whereRaw('DATE_ADD(UpdatedTerm, INTERVAL NextClaim DAY) >= ?', [now()])
             ->get();
+        $rates = EarningsController::GetRates();
+        $parallel = $rates['parallel'];
+        $bcv = $rates['bcv'];
         foreach ($RecurringEarnings as $earning) {
             if ($earning->provider == 'box') {
                 $provider = Box::where('user', $earning->user)->first();
             } else {
                 $provider = Saving::where('user', $earning->user)->first();
             }
-            $provider->amount += $earning->amount;
+            $amount = EarningsController::ConvertAmount($earning->currency, $earning->amount, $parallel, $bcv);
+            $provider->amount += $amount;
             $provider->save();
             $earning->NextClaim = $earning->term;
             $earning->UpdatedTerm = now();

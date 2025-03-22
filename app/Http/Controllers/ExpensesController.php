@@ -107,6 +107,15 @@ class ExpensesController extends Controller
     {
         $this->authorize('delete', $expense);
 
+        if($expense->term == null){
+            if($expense->provider == 'box'){
+                $provider = Box::where('user', auth()->id())->first();
+            } else {
+                $provider = Saving::where('user', auth()->id())->first();
+            }
+            $provider->amount -= $expense->amount;
+            $provider->save();
+        }
         $expense->delete();
 
         return back();

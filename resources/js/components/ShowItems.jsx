@@ -66,7 +66,7 @@ export default function ShowItems({ setActiveTab, activeTab, openRatesModal, Rec
                         {renderItems(OneTimeEarnings, openRatesModal)}
                         <Link className="flex justify-end mt-4" href={route('earnings.index')}>
                             <PrimaryButton>
-                                ADD EARNING TO SAVINGS
+                                ADD EARNING
                             </PrimaryButton>
                         </Link>
                     </>
@@ -77,7 +77,7 @@ export default function ShowItems({ setActiveTab, activeTab, openRatesModal, Rec
                         {renderItems(OneTimeExpenses, openRatesModal)}
                         <Link className="flex justify-end mt-4" href={route('expenses.index')}>
                             <PrimaryButton>
-                                ADD EXPENSE TO SAVINGS
+                                ADD EXPENSE
                             </PrimaryButton>
                         </Link>
                     </>
@@ -87,7 +87,7 @@ export default function ShowItems({ setActiveTab, activeTab, openRatesModal, Rec
                         {renderItems(ShopListItems, openRatesModal)}
                         <Link className="flex justify-end mt-4" href={route('shoplist.index')}>
                             <PrimaryButton>
-                                ADD SHOP LIST ITEM TO SAVINGS
+                                ADD SHOP LIST ITEM
                             </PrimaryButton>
                         </Link>
                     </>

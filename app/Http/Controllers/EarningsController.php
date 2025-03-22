@@ -64,6 +64,7 @@ class EarningsController extends Controller
         $validated['user'] = auth()->id();
         
         $amount = self::ConvertAmount($validated['currency'], $validated['amount'], $parallel, $bcv);
+        
 
         if($validated['provider'] == 'box'){
             $provider = Box::where('user', auth()->id())->first();
@@ -75,6 +76,11 @@ class EarningsController extends Controller
             $validated['UpdatedTerm'] = now();
         } else {
             if($validated['currency'] != '$'){
+                if($validated['currency'] == '$parallel'){
+                    $amount = $amount / $parallel;
+                }
+                $validated['amount'] = $amount;
+                $validated['currency'] = '$';
                 $validated['OneTimeTase'] = $parallel;
             }
             $provider->amount += $amount;
@@ -115,6 +121,15 @@ class EarningsController extends Controller
     {
         $this->authorize('delete', $earning);
 
+        if($earning->term == null){
+            if($earning->provider == 'box'){
+                $provider = Box::where('user', auth()->id())->first();
+            } else {
+                $provider = Saving::where('user', auth()->id())->first();
+            }
+            $provider->amount -= $earning->amount;
+            $provider->save();
+        }
         $earning->delete();
 
         return back();
