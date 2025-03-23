@@ -3,9 +3,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
 import AmountConversionModal from '@/components/AmountConversionModal';
 import ShowItems from '@/components/ShowItems';
+import PrimaryButton from '@/components/PrimaryButton';
+import TransferModal from '@/components/TransferModal';
+import { Inertia } from '@inertiajs/inertia';
 
 export default function Savings({ auth, rates, RecurringEarnings, OneTimeEarnings, RecurringExpenses, OneTimeExpenses, ShopListItems, savings, ExpectedSavings }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [selectedAmount, setSelectedAmount] = useState(0);
     const [selectedCurrency, setSelectedCurrency] = useState('$');
     const [activeTab, setActiveTab] = useState('earnings');
@@ -20,6 +24,14 @@ export default function Savings({ auth, rates, RecurringEarnings, OneTimeEarning
         setIsModalOpen(false);
     };
 
+    const openTransferModal = () => {
+        setIsTransferModalOpen(true);
+    };
+
+    const closeTransferModal = () => {
+        setIsTransferModalOpen(false);
+    };
+
     return (
         <AuthenticatedLayout
             user={auth}
@@ -27,7 +39,7 @@ export default function Savings({ auth, rates, RecurringEarnings, OneTimeEarning
                 <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
                     Savings <span className='text-green-200'>
                         <span onClick={() => openRatesModal(savings, '$')}>{savings}$</span> 
-                        <span onClick={() => openRatesModal(parseFloat(savings)+parseFloat(ExpectedSavings), '$')}>{ExpectedSavings < 0 ? '-' : '+'} {Math.abs(ExpectedSavings)}$</span>
+                        <span onClick={() => openRatesModal(parseFloat(savings) + parseFloat(ExpectedSavings), '$')}>{ExpectedSavings < 0 ? '-' : '+'} {Math.abs(ExpectedSavings)}$</span>
                     </span>
                 </h2>
             }
@@ -48,6 +60,11 @@ export default function Savings({ auth, rates, RecurringEarnings, OneTimeEarning
                                 OneTimeExpenses={OneTimeExpenses}
                                 ShopListItems={ShopListItems}
                             />
+                            <div className='flex justify-end mt-5'>
+                                <PrimaryButton onClick={openTransferModal}>
+                                    Transfer
+                                </PrimaryButton>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -58,6 +75,12 @@ export default function Savings({ auth, rates, RecurringEarnings, OneTimeEarning
                 amount={selectedAmount}
                 currency={selectedCurrency}
                 rates={rates}
+            />
+            <TransferModal
+                isOpen={isTransferModalOpen}
+                onClose={closeTransferModal}
+                defaultAmount={savings}
+                Route='savings.transfer'
             />
         </AuthenticatedLayout>
     );

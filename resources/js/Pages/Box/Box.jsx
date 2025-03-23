@@ -3,11 +3,12 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useState } from 'react';
 import AmountConversionModal from '@/components/AmountConversionModal';
 import ShowItems from '@/components/ShowItems';
-import { Inertia } from '@inertiajs/inertia';
 import PrimaryButton from '@/components/PrimaryButton';
+import TransferModal from '@/components/TransferModal';
 
 export default function Box({ auth, rates, RecurringEarnings, OneTimeEarnings, RecurringExpenses, OneTimeExpenses, ShopListItems, box, ExpectedSavings }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [selectedAmount, setSelectedAmount] = useState(0);
     const [selectedCurrency, setSelectedCurrency] = useState('$');
     const [activeTab, setActiveTab] = useState('earnings');
@@ -22,8 +23,12 @@ export default function Box({ auth, rates, RecurringEarnings, OneTimeEarnings, R
         setIsModalOpen(false);
     };
 
-    const handleTransferClick = () => {
-        Inertia.post(route('box.transfer'));
+    const openTransferModal = () => {
+        setIsTransferModalOpen(true);
+    };
+
+    const closeTransferModal = () => {
+        setIsTransferModalOpen(false);
     };
 
     return (
@@ -55,7 +60,7 @@ export default function Box({ auth, rates, RecurringEarnings, OneTimeEarnings, R
                                 ShopListItems={ShopListItems}
                             />
                             <div className='flex justify-end mt-5'>
-                                <PrimaryButton onClick={handleTransferClick}>
+                                <PrimaryButton onClick={openTransferModal}>
                                     Transfer
                                 </PrimaryButton>
                             </div>
@@ -69,6 +74,12 @@ export default function Box({ auth, rates, RecurringEarnings, OneTimeEarnings, R
                 amount={selectedAmount}
                 currency={selectedCurrency}
                 rates={rates}
+            />
+            <TransferModal
+                isOpen={isTransferModalOpen}
+                onClose={closeTransferModal}
+                defaultAmount={box}
+                Route='box.transfer'
             />
         </AuthenticatedLayout>
     );

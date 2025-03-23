@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'ShowDashboard'])->name('dashboard');
     Route::get('/savings', [DashboardController::class, 'ShowSavings'])->name('savings.show');
+    Route::post('/savings/transfer', [DashboardController::class, 'transferToSavings'])->name('savings.transfer');
     Route::get('/box', [DashboardController::class, 'ShowBox'])->name('box.show');
     Route::post('/box/transfer', [DashboardController::class, 'transfer'])->name('box.transfer');
 });

@@ -78,13 +78,30 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function transfer(){
+    public function transfer(Request $request){
+        $box = Box::where('user', auth()->id())->first();
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:1|max:'.$box->amount
+        ]);
         $savings = Saving::where('user', auth()->id())->first();
         $box = Box::where('user', auth()->id())->first();
-        $savings->amount += $box->amount;
-        $box->amount = 0;
+        $savings->amount += $validated['amount'];
+        $box->amount -= $validated['amount'];
         $savings->save();
         $box->save();
         return redirect()->route('box.show');
+    }
+
+    public function transferToSavings(Request $request){
+        $savings = Saving::where('user', auth()->id())->first();
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:1|max:'.$savings->amount
+        ]);
+        $box = Box::where('user', auth()->id())->first();
+        $box->amount += $validated['amount'];
+        $savings->amount -= $validated['amount'];
+        $savings->save();
+        $box->save();
+        return redirect()->route('savings.show');
     }
 }
