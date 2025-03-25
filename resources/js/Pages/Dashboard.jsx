@@ -59,7 +59,7 @@ export default function Dashboard({ auth, rates, savings, box, ExpectedSavings, 
                                 <p className="text-2xl mt-2">
                                     <span onClick={() => openRatesModal(parseFloat(box)+parseFloat(savings), '$')}>{parseFloat(box)+parseFloat(savings)}$</span> 
                                     <span onClick={() => openRatesModal(parseFloat(savings)+parseFloat(ExpectedSavings)+parseFloat(box)+parseFloat(ExpectedBox), '$')}>
-                                        {parseFloat(ExpectedBox)+parseFloat(ExpectedSavings) < 0 ? '-' : '+'} {Math.abs(parseFloat(ExpectedBox)+parseFloat(ExpectedSavings))}$
+                                        {parseFloat(ExpectedBox)+parseFloat(ExpectedSavings) < 0 ? '-' : '+'} {Math.abs((parseFloat(ExpectedBox)+parseFloat(ExpectedSavings)).toFixed(2))}$
                                     </span>
                                 </p>
                             </div>
