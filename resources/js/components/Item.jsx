@@ -61,6 +61,14 @@ export default function Item({ item, Route, DestroyRoute, openRatesModal }) {
         Inertia.post(route('shoplist.pending', item.id));
     };
 
+    const handleClaim = (item) => {
+        if ('OneTimeTase' in item) {
+            Inertia.post(route('earnings.claim', item.id));
+        } else {
+            Inertia.post(route('expenses.claim', item.id));
+        }
+    };
+
     return (
         <div key={item.id} className="flex items-center justify-between">
             <div>
@@ -93,6 +101,14 @@ export default function Item({ item, Route, DestroyRoute, openRatesModal }) {
                     )}
                     {item.status && item.status === "purchased" && (
                         <button className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600" onClick={handlePending}>Pending</button>
+                    )}
+                    {item.UpdatedTerm && (
+                        <button
+                            className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600"
+                            onClick={() => handleClaim(item)}
+                        >
+                            Claim
+                        </button>
                     )}
                 </Dropdown.Content>
             </Dropdown>

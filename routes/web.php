@@ -35,7 +35,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::resource('/earnings', EarningsController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('auth');
+    Route::post('/earnings/{earning}/claim', [EarningsController::class, 'claim'])->name('earnings.claim');
     Route::resource('/expenses', ExpensesController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('auth');
+    Route::post('/expenses/{expense}/claim', [ExpensesController::class, 'claim'])->name('expenses.claim');
 
     Route::post('/shop-list', [ShopListController::class, 'store'])->name('shoplist.store');
     Route::get('/shop-list', [ShopListController::class, 'index'])->name('shoplist.index');

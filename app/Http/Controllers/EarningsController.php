@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use App\Models\Box;
 use App\Models\Earning;
 use App\Models\Saving;
+use Carbon\Carbon;
 use Exception;
 
 class EarningsController extends Controller
@@ -131,6 +132,22 @@ class EarningsController extends Controller
             $provider->save();
         }
         $earning->delete();
+
+        return back();
+    }
+
+    public function claim(Earning $earning){
+        $this->authorize('update', $earning);
+
+        $lastUpdated = Carbon::parse($earning->UpdatedTerm);
+        $now = Carbon::now();
+
+        $daysElapsed = $lastUpdated->diffInDays($now);
+
+        $earning->NextClaim = max(0, $earning->NextClaim - $daysElapsed) + $earning->term;
+
+        $earning->UpdatedTerm = $now;
+        $earning->save();
 
         return back();
     }

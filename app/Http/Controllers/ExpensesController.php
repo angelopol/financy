@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use App\Models\Box;
 use App\Models\Saving;
 use App\Models\Expense;
+use Carbon\Carbon;
 
 class ExpensesController extends Controller
 {
@@ -117,6 +118,22 @@ class ExpensesController extends Controller
             $provider->save();
         }
         $expense->delete();
+
+        return back();
+    }
+
+    public function claim(Expense $expense){
+        $this->authorize('update', $expense);
+
+        $lastUpdated = Carbon::parse($expense->UpdatedTerm);
+        $now = Carbon::now();
+
+        $daysElapsed = $lastUpdated->diffInDays($now);
+
+        $expense->NextClaim = max(0, $expense->NextClaim - $daysElapsed) + $expense->term;
+
+        $expense->UpdatedTerm = $now;
+        $expense->save();
 
         return back();
     }
