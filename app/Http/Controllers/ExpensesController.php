@@ -125,6 +125,15 @@ class ExpensesController extends Controller
     public function claim(Expense $expense){
         $this->authorize('update', $expense);
 
+        if ($expense->provider == 'box') {
+            $provider = Box::where('user', $expense->user)->first();
+            $otherProvider = Saving::where('user', $expense->user)->first();
+        } else {
+            $provider = Saving::where('user', $expense->user)->first();
+            $otherProvider = Box::where('user', $expense->user)->first();
+        }
+        self::SubtractProvider($provider, $otherProvider, $expense->amount);
+
         $lastUpdated = Carbon::parse($expense->UpdatedTerm);
         $now = Carbon::now();
 

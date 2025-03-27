@@ -139,6 +139,19 @@ class EarningsController extends Controller
     public function claim(Earning $earning){
         $this->authorize('update', $earning);
 
+        $rates = EarningsController::GetRates();
+        $parallel = $rates['parallel'];
+        $bcv = $rates['bcv'];
+
+        if ($earning->provider == 'box') {
+            $provider = Box::where('user', $earning->user)->first();
+        } else {
+            $provider = Saving::where('user', $earning->user)->first();
+        }
+        $amount = self::ConvertAmount($earning->currency, $earning->amount, $parallel, $bcv);
+        $provider->amount += $amount;
+        $provider->save();
+
         $lastUpdated = Carbon::parse($earning->UpdatedTerm);
         $now = Carbon::now();
 
