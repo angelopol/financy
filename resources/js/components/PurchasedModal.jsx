@@ -4,10 +4,12 @@ import InputError from '@/components/InputError';
 import InputLabel from '@/components/InputLabel';
 import SelectInput from '@/components/SelectInput';
 import { useForm } from '@inertiajs/react';
+import TextInput from '@/components/TextInput';
 
 export default function PurchasedModal({ isOpen, onClose, item }) {
     const { data, setData, post, processing, errors } = useForm({
         provider: 'box',
+        amount: item.amount,
     });
 
     const submit = (e) => {
@@ -24,7 +26,6 @@ export default function PurchasedModal({ isOpen, onClose, item }) {
                 <div className="mt-4">
                     <div>
                         <InputLabel htmlFor="provider" value="Provider" />
-        
                         <SelectInput
                             id="provider"
                             value={data.provider}
@@ -35,8 +36,20 @@ export default function PurchasedModal({ isOpen, onClose, item }) {
                             <option value="box">Box</option>
                             <option value="savings">Savings</option>
                         </SelectInput>
-        
                         <InputError message={errors.provider} className="mt-2" />
+                    </div>
+                    <div className="mt-4">
+                        <InputLabel htmlFor="amount" value="Amount" />
+                        <TextInput
+                            id="amount"
+                            type="number"
+                            min="0"
+                            value={data.amount}
+                            onChange={e => setData('amount', e.target.value)}
+                            className="mt-1 block w-full"
+                            required
+                        />
+                        <InputError message={errors.amount} className="mt-2" />
                     </div>
                 </div>
                 <div className="mt-4 flex justify-end">

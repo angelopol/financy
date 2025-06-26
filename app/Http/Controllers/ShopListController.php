@@ -99,19 +99,21 @@ class ShopListController extends Controller
         $this->authorize('purchased', $ShopListItem);
 
         $validated = $request->validate([
-            'provider' => 'required|string|in:box,savings'
+            'provider' => 'required|string|in:box,savings',
+            'amount' => 'required|numeric|min:0'
         ]);
 
-        if($ShopListItem->provider == 'box'){
+        if($validated['provider'] == 'box'){
             $provider = Box::where('user', auth()->id())->first();
             $otherProvider = Saving::where('user', auth()->id())->first();
         } else {
             $provider = Saving::where('user', auth()->id())->first();
             $otherProvider = Box::where('user', auth()->id())->first();
         }
-        ExpensesController::SubtractProvider($provider, $otherProvider, $ShopListItem->amount);
+        ExpensesController::SubtractProvider($provider, $otherProvider, floatval($validated['amount']));
 
         $ShopListItem->provider = $validated['provider'];
+        $ShopListItem->amount = floatval($validated['amount']);
         $ShopListItem->status = 'purchased';
         $ShopListItem->save();
 

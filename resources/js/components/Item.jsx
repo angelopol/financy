@@ -83,7 +83,9 @@ export default function Item({ item, Route, DestroyRoute, openRatesModal }) {
                 ) : item.OneTimeTase ? (
                     <p className="text-sm text-gray-500">Parallel exchange tase of {item.OneTimeTase}</p>
                 ) : null}
-                <p className="text-sm text-gray-500">Saved in {item.provider}</p>
+                {item.provider && (
+                    <p className="text-sm text-gray-500">Saved in {item.provider}</p>
+                )}
                 <p className="text-sm text-gray-500">{dayjs(item.created_at).fromNow()}</p>
                 {item.status ? (
                     <p className={`text-sm ${item.status === 'pending' ? 'text-yellow-500' : item.status === 'purchased' ? 'text-green-500' : 'text-gray-500'}`}>{item.status}</p>
