@@ -6,7 +6,7 @@ import Pagination from '@/components/Pagination';
 import { useState } from 'react';
 import AmountConversionModal from '@/components/AmountConversionModal';
 
-export default function ShopList({ auth, ShopListItems, rates }) {
+export default function ShopList({ auth, ShopListItems, TotalAmount, rates }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedAmount, setSelectedAmount] = useState(0);
     const [selectedCurrency, setSelectedCurrency] = useState('$');
@@ -48,7 +48,8 @@ export default function ShopList({ auth, ShopListItems, rates }) {
                             {items}
                             {ShopListItems.data.length > 0 && (
                                 <>
-                                    <span className="text-sm text-gray-500 flex justify-end cursor-pointer mb-2" onClick={() => openRatesModal(amount, '$')}>Total amount: {amount}$</span>
+                                    <span className="text-sm text-gray-500 flex justify-end cursor-pointer mb-2" onClick={() => openRatesModal(amount, '$')}>Total amount current page: {amount}$</span>
+                                    <span className="text-sm text-gray-500 flex justify-end cursor-pointer mb-2" onClick={() => openRatesModal(TotalAmount, '$')}>Total amount pending: {TotalAmount}$</span>
                                     <div>
                                         <Pagination links={ShopListItems.links} />
                                     </div>

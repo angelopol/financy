@@ -20,6 +20,9 @@ class ShopListController extends Controller
             'ShopListItems' => ShopListItem::where('user', auth()->id())
                 ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
                 ->latest()->paginate(10),
+            'TotalAmount' => ShopListItem::where('user', auth()->id())
+                ->where('status', 'pending')
+                ->sum('amount'),
             'rates' => EarningsController::GetRates()
         ]);
     }
