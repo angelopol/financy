@@ -6,7 +6,7 @@ import PrimaryButton from '@/components/PrimaryButton';
 import SelectInput from '@/components/SelectInput';
 import { useForm } from '@inertiajs/react';
 
-export default function EditItemModal({ item, isOpen, onClose, Route, amount = null }) {
+export default function EditItemModal({ item, isOpen, onClose, Route, amount = null, parallelTase = null }) {
     let values = {
         description: item.description,
     };
@@ -66,6 +66,9 @@ export default function EditItemModal({ item, isOpen, onClose, Route, amount = n
                                 <option value="$">Dollar</option>
                                 <option value="bs">Bolivares</option>
                                 <option value="$bcv">Dollars in bolivares indexed in BCV</option>
+                                {parallelTase && (
+                                    <option value="$parallel">Dollars in bolivares indexed in parallel tase</option>
+                                )}
                             </SelectInput>
                             <InputError message={errors.currency} className="mt-2" />
                         </div>

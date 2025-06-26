@@ -107,8 +107,16 @@ class EarningsController extends Controller
         $this->authorize('update', $earning);
 
         $validated = $request->validate([
-            'description' => 'required|string|max:500'
+            'description' => 'nullable|string|max:500',
+            'amount' => 'nullable|numeric',
+            'currency' => 'nullable|string|in:$,bs,$bcv,$parallel'
         ]);
+
+        foreach($validated as $key => $value){
+            if($value == null){
+                unset($validated[$key]);
+            }
+        }
 
         $earning->update($validated);
 

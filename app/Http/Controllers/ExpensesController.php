@@ -93,8 +93,23 @@ class ExpensesController extends Controller
         $this->authorize('update', $expense);
 
         $validated = $request->validate([
-            'description' => 'required|string|max:500'
+            'amount' => 'nullable|numeric',
+            'description' => 'nullable|string|max:500',
+            'currency' => 'nullable|string|in:$,bs,$bcv'
         ]);
+
+        if(isset($validated['amount'])){
+            $rates = EarningsController::GetRates();
+            $parallel = $rates['parallel'];
+            $bcv = $rates['bcv'];
+            $validated['amount'] = EarningsController::ConvertAmount($validated['currency'], $validated['amount'], $parallel, $bcv);
+        }
+
+        foreach($validated as $key => $value){
+            if($value == null){
+                unset($validated[$key]);
+            }
+        }
 
         $expense->update($validated);
 

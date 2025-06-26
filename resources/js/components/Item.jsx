@@ -126,7 +126,7 @@ export default function Item({ item, Route, DestroyRoute, openRatesModal }) {
                     )}
                 </Dropdown.Content>
             </Dropdown>
-            <EditItemModal item={item} isOpen={isEditModalOpen} onClose={closeEditModal} Route={Route} amount={item.status ? true : null} />
+            <EditItemModal item={item} isOpen={isEditModalOpen} onClose={closeEditModal} Route={Route} amount={item.status || item.term ? true : null} parallelTase={item.currency ? true : null} />
             <ConfirmDeleteModal isOpen={isConfirmDeleteModalOpen} onClose={closeConfirmDeleteModal} onConfirm={handleDelete} />
             <PurchasedModal item={item} isOpen={isPurchasedModalOpen} onClose={closePurchasedModal} />
         </div>
