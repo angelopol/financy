@@ -73,7 +73,7 @@ export default function EditItemModal({ item, isOpen, onClose, Route, amount = n
                 )}
                 <div className="mt-4 flex justify-end">
                     <PrimaryButton disabled={processing}>Save</PrimaryButton>
-                    <PrimaryButton onClick={onClose} className="ml-2">Close</PrimaryButton>
+                    <PrimaryButton onClick={onClose} className="ml-2" type="button">Close</PrimaryButton>
                 </div>
             </form>
         </Modal>

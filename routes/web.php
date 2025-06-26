@@ -45,6 +45,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/shop-list/{ShopListItem}', [ShopListController::class, 'destroy'])->name('shoplist.destroy');
     Route::post('/shop-list/{ShopListItem}/purchase', [ShopListController::class, 'purchase'])->name('shoplist.purchased');
     Route::post('/shop-list/{ShopListItem}/pending', [ShopListController::class, 'pending'])->name('shoplist.pending');
+    Route::post('/shop-list/{ShopListItem}/gift', [ShopListController::class, 'gift'])->name('shoplist.gift');
 
     Route::get('/dashboard', [DashboardController::class, 'ShowDashboard'])->name('dashboard');
     Route::get('/savings', [DashboardController::class, 'ShowSavings'])->name('savings.show');

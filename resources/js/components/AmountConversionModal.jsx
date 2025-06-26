@@ -16,7 +16,7 @@ export default function AmountConversionModal({ isOpen, onClose, amount, currenc
                     <p className="text-sm text-gray-500">Amount in Bs (Parallel): {conversions.parallel}</p>
                 </div>
                 <div className="mt-4 flex justify-end">
-                    <SecondaryButton onClick={onClose}>Close</SecondaryButton>
+                    <SecondaryButton onClick={onClose} type="button">Close</SecondaryButton>
                 </div>
             </div>
         </Modal>

@@ -40,7 +40,7 @@ export default function PurchasedModal({ isOpen, onClose, item }) {
                     </div>
                 </div>
                 <div className="mt-4 flex justify-end">
-                    <PrimaryButton onClick={onClose} className="mr-2">Cancel</PrimaryButton>
+                    <PrimaryButton type="button" onClick={onClose} className="mr-2">Cancel</PrimaryButton>
                     <PrimaryButton type="submit" disabled={processing}>Submit</PrimaryButton>
                 </div>
             </form>
