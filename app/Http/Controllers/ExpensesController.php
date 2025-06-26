@@ -114,7 +114,7 @@ class ExpensesController extends Controller
             } else {
                 $provider = Saving::where('user', auth()->id())->first();
             }
-            $provider->amount -= $expense->amount;
+            $provider->amount += $expense->amount;
             $provider->save();
         }
         $expense->delete();
