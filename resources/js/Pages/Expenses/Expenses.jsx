@@ -51,7 +51,7 @@ export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses, rat
                                     <div className="p-1">
                                         <Pagination links={RecurringExpenses.links} />
                                     </div>
-                                    <span className="text-sm text-gray-500 flex justify-end cursor-pointer" onClick={() => openRatesModal(amount, '$')}>Total amount: {amount}$</span>
+                                    <span className="text-sm text-gray-500 flex justify-end cursor-pointer" onClick={() => openRatesModal(amount, '$')}>Total amount: {amount.toFixed(2)}$</span>
                                 </>
                             )}
                             {OneTimeExpenses.data.map((expense) => (

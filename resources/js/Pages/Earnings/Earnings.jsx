@@ -49,7 +49,9 @@ export default function Earnings({ auth, OneTimeEarnings, RecurringEarnings, rat
                             {items}
                             {RecurringEarnings.data.length > 0 && (
                                 <>
-                                    <span className="text-sm text-gray-500 flex justify-end cursor-pointer" onClick={() => openRatesModal(amount, '$')}>Total amount: {amount}$</span>
+                                    <span className="text-sm text-gray-500 flex justify-end cursor-pointer" onClick={() => openRatesModal(amount, '$')}>
+                                        Total amount: {amount.toFixed(2)}$
+                                    </span>
                                     <div>
                                         <Pagination links={RecurringEarnings.links} />                               
                                     </div>
