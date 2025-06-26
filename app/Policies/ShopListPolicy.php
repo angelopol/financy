@@ -63,4 +63,9 @@ class ShopListPolicy
     {
         return $this->update($user, $shopListItem) && $shopListItem->status === 'purchased';
     }
+
+    public function gift(User $user, ShopListItem $shopListItem): bool
+    {
+        return $this->update($user, $shopListItem) && $shopListItem->status === 'pending';
+    }
 }

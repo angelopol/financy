@@ -115,17 +115,30 @@ class ShopListController extends Controller
         return back();
     }
 
+    public function gift(ShopListItem $ShopListItem)
+    {
+        $this->authorize('gift', $ShopListItem);
+
+        $ShopListItem->provider = null;
+        $ShopListItem->status = 'purchased';
+        $ShopListItem->save();
+
+        return back();
+    }
+
     public function pending(ShopListItem $ShopListItem)
     {
         $this->authorize('pending', $ShopListItem);
 
-        if($ShopListItem->provider == 'box'){
-            $provider = Box::where('user', auth()->id())->first();
-        } else {
-            $provider = Saving::where('user', auth()->id())->first();
+        if($ShopListItem->provider != null){
+            if($ShopListItem->provider == 'box'){
+                $provider = Box::where('user', auth()->id())->first();
+            } else {
+                $provider = Saving::where('user', auth()->id())->first();
+            }
+            $provider->amount += $ShopListItem->amount;
+            $provider->save();
         }
-        $provider->amount += $ShopListItem->amount;
-        $provider->save();
 
         $ShopListItem->provider = null;
         $ShopListItem->status = 'pending';

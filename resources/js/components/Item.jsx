@@ -61,6 +61,10 @@ export default function Item({ item, Route, DestroyRoute, openRatesModal }) {
         Inertia.post(route('shoplist.pending', item.id));
     };
 
+    const handleGift = () => {
+        Inertia.post(route('shoplist.gift', item.id));
+    };
+
     const handleClaim = (item) => {
         if ('OneTimeTase' in item) {
             Inertia.post(route('earnings.claim', item.id));
@@ -97,7 +101,15 @@ export default function Item({ item, Route, DestroyRoute, openRatesModal }) {
                     <button className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600" onClick={openEditModal}>Edit</button>
                     <button className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600" onClick={openConfirmDeleteModal}>Delete</button>
                     {item.status && item.status === "pending" && (
-                        <button className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600" onClick={openPurchasedModal}>Purchased</button>
+                        <>
+                            <button className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600" onClick={openPurchasedModal}>Purchased</button>
+                            <button
+                                className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600"
+                                onClick={handleGift}
+                            >
+                            Gifted
+                        </button>
+                        </>
                     )}
                     {item.status && item.status === "purchased" && (
                         <button className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-600" onClick={handlePending}>Pending</button>
