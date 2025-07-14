@@ -81,7 +81,7 @@ export default function Item({ item, Route, DestroyRoute, openRatesModal }) {
                 {item.term ? (
                     <>
                         <p className="text-sm text-gray-500">Claim cycle of {item.term} days</p>
-                        <p className="text-sm text-gray-500">Next claim {dayjs(item.NextClaim).fromNow()}</p>
+                        <p className="text-sm text-gray-500">Next claim {dayjs(item.NextClaim)}</p>
                     </>
                 ) : item.OneTimeTase ? (
                     <p className="text-sm text-gray-500">Parallel exchange tase of {item.OneTimeTase}</p>
