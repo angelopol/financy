@@ -60,6 +60,9 @@ export default function ShopList({ auth, ShopListItems, TotalAmount, rates }) {
                                     >
                                         Total amount pending: {Number(TotalAmount).toFixed(2)}$
                                     </span>
+                                    <div>
+                                        <Pagination links={ShopListItems.links} />
+                                    </div>
                                 </>
                             )}
                             <br />
