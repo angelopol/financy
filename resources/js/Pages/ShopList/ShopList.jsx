@@ -48,11 +48,18 @@ export default function ShopList({ auth, ShopListItems, TotalAmount, rates }) {
                             {items}
                             {ShopListItems.data.length > 0 && (
                                 <>
-                                    <span className="text-sm text-gray-500 flex justify-end cursor-pointer mb-2" onClick={() => openRatesModal(amount, '$')}>Total amount current page: {amount.toFixed(2)}$</span>
-                                    <span className="text-sm text-gray-500 flex justify-end cursor-pointer mb-2" onClick={() => openRatesModal(TotalAmount, '$')}>Total amount pending: {TotalAmount.toFixed(2)}$</span>
-                                    <div>
-                                        <Pagination links={ShopListItems.links} />
-                                    </div>
+                                    <span
+                                        className="text-sm text-gray-500 flex justify-end cursor-pointer mb-2"
+                                        onClick={() => openRatesModal(amount, '$')}
+                                    >
+                                        Total amount current page: {Number(amount).toFixed(2)}$
+                                    </span>
+                                    <span
+                                        className="text-sm text-gray-500 flex justify-end cursor-pointer mb-2"
+                                        onClick={() => openRatesModal(Number(TotalAmount), '$')}
+                                    >
+                                        Total amount pending: {Number(TotalAmount).toFixed(2)}$
+                                    </span>
                                 </>
                             )}
                             <br />

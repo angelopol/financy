@@ -57,7 +57,7 @@ export default function Dashboard({ auth, rates, savings, box, ExpectedSavings, 
                             <div className="p-6 text-gray-900 dark:text-gray-100">
                                 <h3 className="text-lg font-semibold">Total</h3>
                                 <p className="text-2xl mt-2">
-                                    <span onClick={() => openRatesModal(parseFloat(box)+parseFloat(savings), '$')}>{parseFloat(box)+parseFloat(savings)}$</span> 
+                                    <span onClick={() => openRatesModal(parseFloat(box)+parseFloat(savings), '$')}>{(parseFloat(box)+parseFloat(savings)).toFixed(2)}$</span> 
                                     <span onClick={() => openRatesModal(parseFloat(savings)+parseFloat(ExpectedSavings)+parseFloat(box)+parseFloat(ExpectedBox), '$')}>
                                         {parseFloat(ExpectedBox)+parseFloat(ExpectedSavings) < 0 ? '-' : '+'} {Math.abs(parseFloat(ExpectedBox)+parseFloat(ExpectedSavings)).toFixed(2)}$
                                     </span>
