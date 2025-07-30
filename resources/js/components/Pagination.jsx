@@ -59,7 +59,7 @@ export default function Pagination({ links }) {
     );
 
     return (
-        <div className="flex flex-wrap justify-end mt-6">
+        <div className="flex justify-end mt-6">
             {uniqueLinks.map((link, index) => (
                 <Link
                     key={index}
