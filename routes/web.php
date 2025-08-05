@@ -5,6 +5,7 @@ use App\Http\Controllers\ExpensesController;
 use App\Http\Controllers\EarningsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ShopListController;
+use App\Http\Controllers\CalculatorController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -48,6 +49,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/shop-list/{ShopListItem}/gift', [ShopListController::class, 'gift'])->name('shoplist.gift');
 
     Route::get('/dashboard', [DashboardController::class, 'ShowDashboard'])->name('dashboard');
+    Route::get('/calculator', [CalculatorController::class, 'show'])->name('calculator.show');
     Route::get('/savings', [DashboardController::class, 'ShowSavings'])->name('savings.show');
     Route::post('/savings/transfer', [DashboardController::class, 'transferToSavings'])->name('savings.transfer');
     Route::get('/box', [DashboardController::class, 'ShowBox'])->name('box.show');
