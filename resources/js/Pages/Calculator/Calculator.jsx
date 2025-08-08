@@ -89,27 +89,7 @@ export default function Calculator({ auth, rates }) {
             <Head title="Calculator" />
             <div className="py-12">
                 <div className="max-w-2xl mx-auto sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                            <div className="p-6 text-gray-900 dark:text-gray-100">
-                                <h3 className="text-lg font-semibold">Tasa BCV</h3>
-                                <p className="text-2xl mt-2">{rates?.bcv ? Number(rates.bcv).toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--'} Bs</p>
-                            </div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                            <div className="p-6 text-gray-900 dark:text-gray-100">
-                                <h3 className="text-lg font-semibold">Tasa Paralelo</h3>
-                                <p className="text-2xl mt-2">{rates?.parallel ? Number(rates.parallel).toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--'} Bs</p>
-                            </div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                            <div className="p-6 text-gray-900 dark:text-gray-100">
-                                <h3 className="text-lg font-semibold">Tasa Promedio</h3>
-                                <p className="text-2xl mt-2">{rates?.bcv && rates?.parallel ? getAverage().toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--'} Bs</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6 mb-6">
                         <form className="space-y-6" onSubmit={e => e.preventDefault()}>
                             <div>
                                 <InputLabel htmlFor="rateType" value="Tasa" />
@@ -152,6 +132,26 @@ export default function Calculator({ auth, rates }) {
                             </div>
                             <InputError message={error} className="mt-2" />
                         </form>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                            <div className="p-6 text-gray-900 dark:text-gray-100">
+                                <h3 className="text-lg font-semibold">Tasa BCV</h3>
+                                <p className="text-2xl mt-2">{rates?.bcv ? Number(rates.bcv).toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--'} Bs</p>
+                            </div>
+                        </div>
+                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                            <div className="p-6 text-gray-900 dark:text-gray-100">
+                                <h3 className="text-lg font-semibold">Tasa Paralelo</h3>
+                                <p className="text-2xl mt-2">{rates?.parallel ? Number(rates.parallel).toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--'} Bs</p>
+                            </div>
+                        </div>
+                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                            <div className="p-6 text-gray-900 dark:text-gray-100">
+                                <h3 className="text-lg font-semibold">Tasa Promedio</h3>
+                                <p className="text-2xl mt-2">{rates?.bcv && rates?.parallel ? getAverage().toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--'} Bs</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
