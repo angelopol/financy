@@ -17,9 +17,20 @@ export default function Calculator({ auth, rates }) {
     const [error, setError] = useState('');
     const [lastEdited, setLastEdited] = useState('bs'); // 'bs' o 'usd'
 
+    const getAverage = () => {
+        if (!rates) return 0;
+        const bcv = parseFloat(rates.bcv);
+        const parallel = parseFloat(rates.parallel);
+        if (isNaN(bcv) || isNaN(parallel)) return 0;
+        return ((bcv + parallel) / 2);
+    };
+
     const getRate = () => {
         if (!rates) return 0;
-        return rateType === 'parallel' ? rates.parallel : rates.bcv;
+        if (rateType === 'parallel') return rates.parallel;
+        if (rateType === 'bcv') return rates.bcv;
+        if (rateType === 'average') return getAverage();
+        return 0;
     };
 
     const handleBsChange = (e) => {
@@ -56,7 +67,14 @@ export default function Calculator({ auth, rates }) {
         const newRateType = e.target.value;
         setRateType(newRateType);
         setError('');
-        const rate = parseFloat(newRateType === 'parallel' ? rates.parallel : rates.bcv);
+        let rate = 0;
+        if (newRateType === 'parallel') {
+            rate = parseFloat(rates.parallel);
+        } else if (newRateType === 'bcv') {
+            rate = parseFloat(rates.bcv);
+        } else if (newRateType === 'average') {
+            rate = getAverage();
+        }
         if (!isNaN(rate) && rate !== 0) {
             if (lastEdited === 'bs' && bs !== '' && !isNaN(parseFloat(bs))) {
                 setUsd((parseFloat(bs) / rate).toFixed(2));
@@ -71,7 +89,7 @@ export default function Calculator({ auth, rates }) {
             <Head title="Calculator" />
             <div className="py-12">
                 <div className="max-w-2xl mx-auto sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                             <div className="p-6 text-gray-900 dark:text-gray-100">
                                 <h3 className="text-lg font-semibold">Tasa BCV</h3>
@@ -82,6 +100,12 @@ export default function Calculator({ auth, rates }) {
                             <div className="p-6 text-gray-900 dark:text-gray-100">
                                 <h3 className="text-lg font-semibold">Tasa Paralelo</h3>
                                 <p className="text-2xl mt-2">{rates?.parallel ? Number(rates.parallel).toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--'} Bs</p>
+                            </div>
+                        </div>
+                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                            <div className="p-6 text-gray-900 dark:text-gray-100">
+                                <h3 className="text-lg font-semibold">Tasa Promedio</h3>
+                                <p className="text-2xl mt-2">{rates?.bcv && rates?.parallel ? getAverage().toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--'} Bs</p>
                             </div>
                         </div>
                     </div>
@@ -97,6 +121,7 @@ export default function Calculator({ auth, rates }) {
                                 >
                                     <option value="parallel">Paralelo</option>
                                     <option value="bcv">BCV</option>
+                                    <option value="average">Promedio</option>
                                 </SelectInput>
                             </div>
                             <div>
