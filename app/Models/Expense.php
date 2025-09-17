@@ -14,8 +14,14 @@ class Expense extends Model
         return $this->belongsTo(User::class, 'user', 'id');
     }
 
+    public function shopListItem()
+    {
+        return $this->belongsTo(ShopListItem::class, 'shop_list_item_id', 'id');
+    }
+
     protected $fillable = [
         'user',
+        'shop_list_item_id',
         'description',
         'amount',
         'provider',

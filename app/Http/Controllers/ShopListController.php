@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use App\Models\ShopListItem;
 use App\Models\Box;
 use App\Models\Saving;
+use App\Models\Expense;
 
 class ShopListController extends Controller
 {
@@ -117,12 +118,31 @@ class ShopListController extends Controller
         $ShopListItem->status = 'purchased';
         $ShopListItem->save();
 
+        // Create a one-time expense entry for history using the chosen amount
+        $expenseData = [
+            'description' => $ShopListItem->description,
+            'amount' => floatval($validated['amount']),
+            'provider' => $validated['provider'],
+            'term' => null,
+            'NextClaim' => null,
+            'UpdatedTerm' => null,
+        ];
+        // Link the created expense to this shop list item to avoid double-refunds later
+        $expenseData['shop_list_item_id'] = $ShopListItem->id;
+        $request->user()->expenses()->create($expenseData);
+
         return back();
     }
 
     public function gift(ShopListItem $ShopListItem)
     {
         $this->authorize('gift', $ShopListItem);
+
+        // If an expense was created when it was purchased, delete it to prevent refunds elsewhere
+        if ($ShopListItem->expense) {
+            // Deleting the expense will not refund (destroy() only refunds when term is null and we call it). Here we directly delete.
+            $ShopListItem->expense()->delete();
+        }
 
         $ShopListItem->provider = null;
         $ShopListItem->status = 'purchased';
@@ -135,14 +155,20 @@ class ShopListController extends Controller
     {
         $this->authorize('pending', $ShopListItem);
 
-        if($ShopListItem->provider != null){
-            if($ShopListItem->provider == 'box'){
-                $provider = Box::where('user', auth()->id())->first();
-            } else {
-                $provider = Saving::where('user', auth()->id())->first();
+        // If there is a linked expense for this purchase, delete it and DO NOT refund here to avoid double adjustments.
+        if ($ShopListItem->expense) {
+            $ShopListItem->expense()->delete();
+        } else {
+            // Backward compatibility: For old purchases without linked expense, perform the manual refund once.
+            if($ShopListItem->provider != null){
+                if($ShopListItem->provider == 'box'){
+                    $provider = Box::where('user', auth()->id())->first();
+                } else {
+                    $provider = Saving::where('user', auth()->id())->first();
+                }
+                $provider->amount += $ShopListItem->amount;
+                $provider->save();
             }
-            $provider->amount += $ShopListItem->amount;
-            $provider->save();
         }
 
         $ShopListItem->provider = null;

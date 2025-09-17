@@ -101,7 +101,26 @@ class ReportController extends Controller
 
         $columns = ['id', 'description', 'amount', 'currency', 'provider', 'created_at'];
 
-        $callback = function () use ($items, $columns) {
+        $currencyLabel = function ($c) {
+            return match ($c) {
+                '$' => 'Dollar',
+                'bs' => 'Bolivares',
+                '$bcv' => 'Dollars in bolivares indexed in BCV',
+                '$parallel' => 'Dollars in bolivares indexed in parallel tase',
+                default => $c,
+            };
+        };
+
+        $providerLabel = function ($p) {
+            $p = strtolower((string)$p);
+            return match ($p) {
+                'savings' => 'Savings',
+                'box' => 'Box',
+                default => $p,
+            };
+        };
+
+        $callback = function () use ($items, $columns, $currencyLabel, $providerLabel) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, $columns);
             foreach ($items as $row) {
@@ -109,8 +128,8 @@ class ReportController extends Controller
                     $row->id,
                     $row->description,
                     $row->amount,
-                    $row->currency,
-                    $row->provider,
+                    $currencyLabel($row->currency),
+                    $providerLabel($row->provider),
                     optional($row->created_at)->toDateTimeString(),
                 ]);
             }
@@ -147,7 +166,26 @@ class ReportController extends Controller
 
         $columns = ['id', 'description', 'amount', 'currency', 'provider', 'created_at'];
 
-        $callback = function () use ($items, $columns) {
+        $currencyLabel = function ($c) {
+            return match ($c) {
+                '$' => 'Dollar',
+                'bs' => 'Bolivares',
+                '$bcv' => 'Dollars in bolivares indexed in BCV',
+                '$parallel' => 'Dollars in bolivares indexed in parallel tase',
+                default => $c,
+            };
+        };
+
+        $providerLabel = function ($p) {
+            $p = strtolower((string)$p);
+            return match ($p) {
+                'savings' => 'Savings',
+                'box' => 'Box',
+                default => $p,
+            };
+        };
+
+        $callback = function () use ($items, $columns, $currencyLabel, $providerLabel) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, $columns);
             foreach ($items as $row) {
@@ -155,8 +193,8 @@ class ReportController extends Controller
                     $row->id,
                     $row->description,
                     $row->amount,
-                    $row->currency,
-                    $row->provider,
+                    $currencyLabel($row->currency),
+                    $providerLabel($row->provider),
                     optional($row->created_at)->toDateTimeString(),
                 ]);
             }

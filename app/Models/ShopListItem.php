@@ -14,6 +14,11 @@ class ShopListItem extends Model
         return $this->belongsTo(User::class, 'user', 'id');
     }
 
+    public function expense()
+    {
+        return $this->hasOne(Expense::class, 'shop_list_item_id', 'id');
+    }
+
     protected $fillable = [
         'user',
         'description',

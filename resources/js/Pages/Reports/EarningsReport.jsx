@@ -1,7 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import PrimaryButton from '@/components/PrimaryButton';
 import dayjs from 'dayjs';
+import { useRef } from 'react';
 
 const currencyLabel = (c) => {
     switch (c) {
@@ -30,8 +31,25 @@ const providerLabel = (p) => {
 };
 
 export default function EarningsReport({ auth, items, from, to, provider }) {
+    const printRef = useRef(null);
     const handlePrint = () => {
-        window.print();
+        const printContents = printRef.current ? printRef.current.innerHTML : '';
+        const w = window.open('', '_blank');
+        if (!w) return;
+        w.document.open();
+        w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Earnings Report</title>
+            <style>
+                body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; padding: 24px; }
+                h1 { font-size: 20px; margin-bottom: 12px; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
+                thead { background: #f9fafb; }
+            </style>
+        </head><body>${printContents}</body></html>`);
+        w.document.close();
+        w.focus();
+        w.print();
+        w.close();
     };
     const query = new URLSearchParams();
     if (from) query.set('from', from);
@@ -46,17 +64,18 @@ export default function EarningsReport({ auth, items, from, to, provider }) {
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6 text-gray-900 dark:text-gray-100">
-                            {(from || to || provider) && (
-                                <p className="mb-3 text-sm text-gray-400">Rango: {from || 'inicio'} → {to || 'hoy'} {provider ? `| Provider: ${providerLabel(provider)}` : ''}</p>
-                            )}
                             <div className="flex justify-end gap-3 mb-4 print:hidden">
-                                <Link href={csvHref}>
+                                <a href={csvHref}>
                                     <PrimaryButton>Download CSV</PrimaryButton>
-                                </Link>
+                                </a>
                                 <PrimaryButton onClick={handlePrint}>Download PDF</PrimaryButton>
                             </div>
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <div ref={printRef}>
+                                {(from || to || provider) && (
+                                    <p className="mb-3 text-sm text-gray-400">Rango: {from || 'inicio'} → {to || 'hoy'} {provider ? `| Provider: ${providerLabel(provider)}` : ''}</p>
+                                )}
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                     <thead className="bg-gray-50 dark:bg-gray-700">
                                         <tr>
                                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
@@ -78,8 +97,9 @@ export default function EarningsReport({ auth, items, from, to, provider }) {
                                                 <td className="px-4 py-2 whitespace-nowrap">{row.created_at ? dayjs(row.created_at).format('DD/MM/YYYY HH:mm') : ''}</td>
                                             </tr>
                                         ))}
-                                    </tbody>
-                                </table>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
