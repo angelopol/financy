@@ -53,6 +53,25 @@ class amounts extends Command
             $earning->NextClaim = $earning->term;
             $earning->UpdatedTerm = now();
             $earning->save();
+
+            // Create one-time Earning record to save movement history
+            $oneTime = [
+                'user' => $earning->user,
+                'recurring_id' => $earning->id,
+                'description' => $earning->description,
+                'amount' => $earning->amount,
+                'currency' => $earning->currency,
+                'provider' => $earning->provider,
+                'term' => null,
+                'NextClaim' => null,
+                'UpdatedTerm' => null,
+            ];
+            // For parity with store(), keep original currency and store conversion metadata if needed
+            if ($earning->currency != '$') {
+                // We keep amount in original currency for record, but also store OneTimeTase used at this moment
+                $oneTime['OneTimeTase'] = $parallel;
+            }
+            Earning::create($oneTime);
         }
     
         foreach ($RecurringExpenses as $expense) {
@@ -67,6 +86,18 @@ class amounts extends Command
             $expense->NextClaim = $expense->term;
             $expense->UpdatedTerm = now();
             $expense->save();
+
+            // Create one-time Expense record to save movement history
+            Expense::create([
+                'user' => $expense->user,
+                'recurring_id' => $expense->id,
+                'description' => $expense->description,
+                'amount' => $expense->amount,
+                'provider' => $expense->provider,
+                'term' => null,
+                'NextClaim' => null,
+                'UpdatedTerm' => null,
+            ]);
         }
     }
 }

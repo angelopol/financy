@@ -16,6 +16,7 @@ class Earning extends Model
 
     protected $fillable = [
         'user',
+        'recurring_id',
         'description',
         'amount',
         'currency',
@@ -25,4 +26,14 @@ class Earning extends Model
         'UpdatedTerm',
         'OneTimeTase'
     ];
+
+    public function parentRecurring()
+    {
+        return $this->belongsTo(self::class, 'recurring_id', 'id');
+    }
+
+    public function generatedCycles()
+    {
+        return $this->hasMany(self::class, 'recurring_id', 'id');
+    }
 }

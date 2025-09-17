@@ -22,6 +22,7 @@ class Expense extends Model
     protected $fillable = [
         'user',
         'shop_list_item_id',
+        'recurring_id',
         'description',
         'amount',
         'provider',
@@ -29,4 +30,14 @@ class Expense extends Model
         'NextClaim',
         'UpdatedTerm'
     ];
+
+    public function parentRecurring()
+    {
+        return $this->belongsTo(self::class, 'recurring_id', 'id');
+    }
+
+    public function generatedCycles()
+    {
+        return $this->hasMany(self::class, 'recurring_id', 'id');
+    }
 }
