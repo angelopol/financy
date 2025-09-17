@@ -30,7 +30,7 @@ const providerLabel = (p) => {
     }
 };
 
-export default function ExpensesReport({ auth, items, from, to, provider }) {
+export default function ExpensesReport({ auth, items, from, to, provider, totalAmount }) {
     const printRef = useRef(null);
     const handlePrint = () => {
         const printContents = printRef.current ? printRef.current.innerHTML : '';
@@ -92,12 +92,19 @@ export default function ExpensesReport({ auth, items, from, to, provider }) {
                                                 <td className="px-4 py-2 whitespace-nowrap">{row.id}</td>
                                                 <td className="px-4 py-2 whitespace-nowrap">{row.description}</td>
                                                 <td className="px-4 py-2 whitespace-nowrap">{Number(row.amount).toFixed(2)}</td>
-                                                <td className="px-4 py-2 whitespace-nowrap">{currencyLabel(row.currency)}</td>
+                                                <td className="px-4 py-2 whitespace-nowrap">{currencyLabel(row.currency || '$')}</td>
                                                 <td className="px-4 py-2 whitespace-nowrap">{providerLabel(row.provider)}</td>
                                                 <td className="px-4 py-2 whitespace-nowrap">{row.created_at ? dayjs(row.created_at).format('DD/MM/YYYY HH:mm') : ''}</td>
                                             </tr>
                                         ))}
                                         </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td className="px-4 py-2 font-semibold" colSpan={2}>Total Amount</td>
+                                                <td className="px-4 py-2 font-semibold">{Number(totalAmount || 0).toFixed(2)}</td>
+                                                <td colSpan={3}></td>
+                                            </tr>
+                                        </tfoot>
                                     </table>
                                 </div>
                             </div>

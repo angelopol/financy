@@ -30,7 +30,10 @@ class ReportController extends Controller
             $query->where('provider', $provider);
         }
 
-        $items = $query->latest()->paginate(15)->withQueryString();
+    // Compute total BEFORE pagination to avoid any limit/offset effects
+    $totalAmount = (clone $query)->sum('amount');
+    // Then fetch paginated items using a fresh clone
+    $items = (clone $query)->latest()->paginate(15)->withQueryString();
 
         return Inertia::render('Reports/EarningsReport', [
             'auth' => auth()->user(),
@@ -39,6 +42,7 @@ class ReportController extends Controller
             'from' => $from,
             'to' => $to,
             'provider' => $provider,
+            'totalAmount' => $totalAmount,
         ]);
     }
 
@@ -62,7 +66,10 @@ class ReportController extends Controller
             $query->where('provider', $provider);
         }
 
-        $items = $query->latest()->paginate(15)->withQueryString();
+    // Compute total BEFORE pagination to avoid any limit/offset effects
+    $totalAmount = (clone $query)->sum('amount');
+    // Then fetch paginated items using a fresh clone
+    $items = (clone $query)->latest()->paginate(15)->withQueryString();
 
         return Inertia::render('Reports/ExpensesReport', [
             'auth' => auth()->user(),
@@ -71,6 +78,7 @@ class ReportController extends Controller
             'from' => $from,
             'to' => $to,
             'provider' => $provider,
+            'totalAmount' => $totalAmount,
         ]);
     }
 
@@ -128,7 +136,8 @@ class ReportController extends Controller
                     $row->id,
                     $row->description,
                     $row->amount,
-                    $currencyLabel($row->currency),
+                    // Expenses do not persist currency; default to Dollar
+                    $currencyLabel($row->currency ?? '$'),
                     $providerLabel($row->provider),
                     optional($row->created_at)->toDateTimeString(),
                 ]);

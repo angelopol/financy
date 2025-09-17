@@ -30,7 +30,7 @@ const providerLabel = (p) => {
     }
 };
 
-export default function EarningsReport({ auth, items, from, to, provider }) {
+export default function EarningsReport({ auth, items, from, to, provider, totalAmount }) {
     const printRef = useRef(null);
     const handlePrint = () => {
         const printContents = printRef.current ? printRef.current.innerHTML : '';
@@ -98,6 +98,13 @@ export default function EarningsReport({ auth, items, from, to, provider }) {
                                             </tr>
                                         ))}
                                         </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td className="px-4 py-2 font-semibold" colSpan={2}>Total Amount</td>
+                                                <td className="px-4 py-2 font-semibold">{Number(totalAmount || 0).toFixed(2)}</td>
+                                                <td colSpan={3}></td>
+                                            </tr>
+                                        </tfoot>
                                     </table>
                                 </div>
                             </div>
