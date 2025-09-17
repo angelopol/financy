@@ -6,6 +6,7 @@ use App\Http\Controllers\EarningsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ShopListController;
 use App\Http\Controllers\CalculatorController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -54,6 +55,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/savings/transfer', [DashboardController::class, 'transferToSavings'])->name('savings.transfer');
     Route::get('/box', [DashboardController::class, 'ShowBox'])->name('box.show');
     Route::post('/box/transfer', [DashboardController::class, 'transfer'])->name('box.transfer');
+
+    // Reports
+    Route::get('/reports/earnings', [ReportController::class, 'earnings'])->name('reports.earnings');
+    Route::get('/reports/expenses', [ReportController::class, 'expenses'])->name('reports.expenses');
+    Route::get('/reports/earnings.csv', [ReportController::class, 'earningsCsv'])->name('reports.earnings.csv');
+    Route::get('/reports/expenses.csv', [ReportController::class, 'expensesCsv'])->name('reports.expenses.csv');
 });
 
 require __DIR__.'/auth.php';

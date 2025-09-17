@@ -13,7 +13,7 @@ class EarningsPolicy
      */
     public function viewAny(User $user): bool
     {
-        //
+        return true; // Any authenticated user can view their list
     }
 
     /**
@@ -21,7 +21,7 @@ class EarningsPolicy
      */
     public function view(User $user, Earning $earning): bool
     {
-        //
+        return (int)$earning->user === (int)$user->id;
     }
 
     /**
@@ -29,7 +29,7 @@ class EarningsPolicy
      */
     public function create(User $user): bool
     {
-        //
+        return true; // Any authenticated user can create
     }
 
     /**
@@ -53,7 +53,7 @@ class EarningsPolicy
      */
     public function restore(User $user, Earning $earning): bool
     {
-        //
+        return false;
     }
 
     /**
@@ -61,6 +61,6 @@ class EarningsPolicy
      */
     public function forceDelete(User $user, Earning $earning): bool
     {
-        //
+        return false;
     }
 }

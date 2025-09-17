@@ -5,11 +5,17 @@ import Item from '@/components/Item';
 import Pagination from '@/components/Pagination';
 import { useState } from 'react';
 import AmountConversionModal from '@/components/AmountConversionModal';
+import PrimaryButton from '@/components/PrimaryButton';
+import DateRangeReportModal from '@/components/DateRangeReportModal';
 
 export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses, rates }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedAmount, setSelectedAmount] = useState(0);
     const [selectedCurrency, setSelectedCurrency] = useState('$');
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [reportFrom, setReportFrom] = useState('');
+    const [reportTo, setReportTo] = useState('');
+    const [reportProvider, setReportProvider] = useState('both');
 
     const openRatesModal = (amount, currency) => {
         setSelectedAmount(amount);
@@ -19,6 +25,19 @@ export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses, rat
 
     const closeratesModal = () => {
         setIsModalOpen(false);
+    };
+    const openReportModal = () => setIsReportModalOpen(true);
+    const closeReportModal = () => setIsReportModalOpen(false);
+    const applyReportRange = ({ from, to, provider }) => {
+        setReportFrom(from);
+        setReportTo(to);
+        setReportProvider(provider || 'both');
+        setIsReportModalOpen(false);
+        const params = new URLSearchParams();
+        if (from) params.set('from', from);
+        if (to) params.set('to', to);
+        if (provider && provider !== 'both') params.set('provider', provider);
+        window.location.href = route('reports.expenses') + (params.toString() ? `?${params.toString()}` : '');
     };
 
     const items = [];
@@ -68,8 +87,10 @@ export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses, rat
                                     <Pagination links={OneTimeExpenses.links} />
                                 </div>
                             )}
-                            <br />
-                            <CreateExpensesModal />
+                            <div className="flex justify-end items-center gap-2 mt-4">
+                                <CreateExpensesModal />
+                                <PrimaryButton onClick={openReportModal}>Generate Report</PrimaryButton>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -80,6 +101,14 @@ export default function Expenses({ auth, RecurringExpenses, OneTimeExpenses, rat
                 amount={selectedAmount}
                 currency={selectedCurrency}
                 rates={rates}
+            />
+            <DateRangeReportModal
+                isOpen={isReportModalOpen}
+                onClose={closeReportModal}
+                onApply={applyReportRange}
+                initialFrom={reportFrom}
+                initialTo={reportTo}
+                initialProvider={reportProvider}
             />
         </AuthenticatedLayout>
     );
