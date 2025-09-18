@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
+import Pagination from '@/components/Pagination';
 import PrimaryButton from '@/components/PrimaryButton';
 import dayjs from 'dayjs';
 import { useRef } from 'react';
@@ -30,7 +31,7 @@ const providerLabel = (p) => {
     }
 };
 
-export default function ExpensesReport({ auth, items, from, to, provider, totalAmount }) {
+export default function ExpensesReport({ auth, items, itemsAll, from, to, provider, totalAmount }) {
     const printRef = useRef(null);
     const handlePrint = () => {
         const printContents = printRef.current ? printRef.current.innerHTML : '';
@@ -70,7 +71,8 @@ export default function ExpensesReport({ auth, items, from, to, provider, totalA
                                 </a>
                                 <PrimaryButton onClick={handlePrint}>Download PDF</PrimaryButton>
                             </div>
-                            <div ref={printRef}>
+                            {/* Print-only full table */}
+                            <div ref={printRef} className="hidden print:block">
                                 {(from || to || provider) && (
                                     <p className="mb-3 text-sm text-gray-400">Rango: {from || 'inicio'} → {to || 'hoy'} {provider ? `| Provider: ${providerLabel(provider)}` : ''}</p>
                                 )}
@@ -87,7 +89,7 @@ export default function ExpensesReport({ auth, items, from, to, provider, totalA
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                        {items.data.map((row) => (
+                                        {itemsAll.map((row) => (
                                             <tr key={row.id}>
                                                 <td className="px-4 py-2 whitespace-nowrap">{row.id}</td>
                                                 <td className="px-4 py-2 whitespace-nowrap">{row.description}</td>
@@ -107,6 +109,46 @@ export default function ExpensesReport({ auth, items, from, to, provider, totalA
                                         </tfoot>
                                     </table>
                                 </div>
+                            </div>
+                            {/* Screen table with pagination */}
+                            <div className="print:hidden">
+                                {(from || to || provider) && (
+                                    <p className="mb-3 text-sm text-gray-400">Rango: {from || 'inicio'} → {to || 'hoy'} {provider ? `| Provider: ${providerLabel(provider)}` : ''}</p>
+                                )}
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                        <thead className="bg-gray-50 dark:bg-gray-700">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Currency</th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider</th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                            {items.data.map((row) => (
+                                                <tr key={row.id}>
+                                                    <td className="px-4 py-2 whitespace-nowrap">{row.id}</td>
+                                                    <td className="px-4 py-2 whitespace-nowrap">{row.description}</td>
+                                                    <td className="px-4 py-2 whitespace-nowrap">{Number(row.amount).toFixed(2)}</td>
+                                                    <td className="px-4 py-2 whitespace-nowrap">{currencyLabel(row.currency || '$')}</td>
+                                                    <td className="px-4 py-2 whitespace-nowrap">{providerLabel(row.provider)}</td>
+                                                    <td className="px-4 py-2 whitespace-nowrap">{row.created_at ? dayjs(row.created_at).format('DD/MM/YYYY HH:mm') : ''}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td className="px-4 py-2 font-semibold" colSpan={2}>Total Amount</td>
+                                                <td className="px-4 py-2 font-semibold">{Number(totalAmount || 0).toFixed(2)}</td>
+                                                <td colSpan={3}></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                <Pagination links={items.links} />
                             </div>
                         </div>
                     </div>

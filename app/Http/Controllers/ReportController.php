@@ -34,6 +34,8 @@ class ReportController extends Controller
     $totalAmount = (clone $query)->sum('amount');
     // Then fetch paginated items using a fresh clone
     $items = (clone $query)->latest()->paginate(15)->withQueryString();
+    // Fetch full list for printing (PDF)
+    $itemsAll = (clone $query)->latest()->get();
 
         return Inertia::render('Reports/EarningsReport', [
             'auth' => auth()->user(),
@@ -43,6 +45,7 @@ class ReportController extends Controller
             'to' => $to,
             'provider' => $provider,
             'totalAmount' => $totalAmount,
+            'itemsAll' => $itemsAll,
         ]);
     }
 
@@ -70,6 +73,8 @@ class ReportController extends Controller
     $totalAmount = (clone $query)->sum('amount');
     // Then fetch paginated items using a fresh clone
     $items = (clone $query)->latest()->paginate(15)->withQueryString();
+    // Fetch full list for printing (PDF)
+    $itemsAll = (clone $query)->latest()->get();
 
         return Inertia::render('Reports/ExpensesReport', [
             'auth' => auth()->user(),
@@ -79,6 +84,7 @@ class ReportController extends Controller
             'to' => $to,
             'provider' => $provider,
             'totalAmount' => $totalAmount,
+            'itemsAll' => $itemsAll,
         ]);
     }
 
