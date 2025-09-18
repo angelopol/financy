@@ -1,19 +1,29 @@
 import { Link } from '@inertiajs/react';
 
 export default function Pagination({ links }) {
+    if (!links || links.length === 0) return null;
+
+    const renderLink = (link, index) => {
+        const base = 'mx-1 px-2 py-1 border rounded text-xs font-semibold';
+        const state = !link.url
+            ? 'text-gray-400 cursor-not-allowed bg-gray-100 border-gray-200'
+            : link.active
+                ? 'bg-white text-black border-gray-400'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50';
+        return (
+            <Link
+                key={index}
+                href={link.url}
+                className={`${base} ${state}`}
+                dangerouslySetInnerHTML={{ __html: link.label }}
+            />
+        );
+    };
+
     if (links.length <= 7) {
         return (
             <div className="flex flex-wrap justify-end mt-6">
-                {links.map((link, index) => (
-                    <Link
-                        key={index}
-                        href={link.url}
-                        className={`mx-1 px-2 py-1 border rounded text-xs font-semibold ${
-                            link.active ? 'bg-black-500 text-white' : 'bg-white text-black-500'
-                        } ${!link.url ? 'text-gray-400 cursor-not-allowed' : ''}`}
-                        dangerouslySetInnerHTML={{ __html: link.label }}
-                    />
-                ))}
+                {links.map(renderLink)}
             </div>
         );
     }
@@ -41,7 +51,7 @@ export default function Pagination({ links }) {
 
     // 5. Intermediate 2
     const intermediate2Index = Math.floor((currentIndex + lastPageIndex) / 2);
-     if (intermediate2Index > currentIndex && intermediate2Index < lastPageIndex) {
+    if (intermediate2Index > currentIndex && intermediate2Index < lastPageIndex) {
         filteredLinks.push(links[intermediate2Index]);
     }
 
@@ -60,16 +70,7 @@ export default function Pagination({ links }) {
 
     return (
         <div className="flex justify-end mt-6">
-            {uniqueLinks.map((link, index) => (
-                <Link
-                    key={index}
-                    href={link.url}
-                    className={`mx-1 px-2 py-1 border rounded text-xs font-semibold ${
-                        link.active ? 'bg-black-500 text-white' : 'bg-white text-black-500'
-                    } ${!link.url ? 'text-gray-400 cursor-not-allowed' : ''}`}
-                    dangerouslySetInnerHTML={{ __html: link.label }}
-                />
-            ))}
+            {uniqueLinks.map(renderLink)}
         </div>
     );
 }
