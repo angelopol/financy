@@ -8,7 +8,7 @@ export default function Pagination({ links }) {
         const state = !link.url
             ? 'text-gray-400 cursor-not-allowed bg-gray-100 border-gray-200'
             : link.active
-                ? 'bg-white text-black border-gray-400'
+                ? 'bg-white text-black border-sky-400 ring-1 ring-sky-300'
                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50';
         return (
             <Link
