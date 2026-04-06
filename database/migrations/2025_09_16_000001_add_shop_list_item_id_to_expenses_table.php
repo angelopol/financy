@@ -11,7 +11,7 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('expenses', function (Blueprint $table) {
-            $table->foreignId('shop_list_item_id')->nullable()->after('user')
+            $table->foreignId('shop_list_item_id')->nullable()
                   ->constrained('shop_list_items')->nullOnDelete();
         });
     }

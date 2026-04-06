@@ -8,11 +8,11 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('earnings', function (Blueprint $table) {
-            $table->foreignId('recurring_id')->nullable()->after('user')
+            $table->foreignId('recurring_id')->nullable()
                 ->constrained('earnings')->nullOnDelete();
         });
         Schema::table('expenses', function (Blueprint $table) {
-            $table->foreignId('recurring_id')->nullable()->after('user')
+            $table->foreignId('recurring_id')->nullable()
                 ->constrained('expenses')->nullOnDelete();
         });
     }

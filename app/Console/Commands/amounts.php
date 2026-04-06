@@ -9,6 +9,7 @@ use App\Models\Expense;
 use App\Models\Box;
 use App\Models\Saving;
 use App\Http\Controllers\ExpensesController;
+use Carbon\Carbon;
 
 class amounts extends Command
 {
@@ -31,13 +32,19 @@ class amounts extends Command
      */
     public function handle()
     {
-        $RecurringEarnings = Earning::where('term', '!=', null)
-            ->whereRaw('DATE_ADD(UpdatedTerm, INTERVAL NextClaim DAY) <= ?', [now()])
-            ->get();
-        
-        $RecurringExpenses = Expense::where('term', '!=', null)
-            ->whereRaw('DATE_ADD(UpdatedTerm, INTERVAL NextClaim DAY) <= ?', [now()])
-            ->get();
+        $now = now();
+
+        $RecurringEarnings = Earning::whereNotNull('term')
+            ->whereNotNull('UpdatedTerm')
+            ->whereNotNull('NextClaim')
+            ->get()
+            ->filter(fn (Earning $earning) => $this->isRecurringClaimDue($earning->UpdatedTerm, $earning->NextClaim, $now));
+
+        $RecurringExpenses = Expense::whereNotNull('term')
+            ->whereNotNull('UpdatedTerm')
+            ->whereNotNull('NextClaim')
+            ->get()
+            ->filter(fn (Expense $expense) => $this->isRecurringClaimDue($expense->UpdatedTerm, $expense->NextClaim, $now));
         $rates = EarningsController::GetRates();
         $parallel = $rates['parallel'];
         $bcv = $rates['bcv'];
@@ -99,5 +106,16 @@ class amounts extends Command
                 'UpdatedTerm' => null,
             ]);
         }
+    }
+
+    private function isRecurringClaimDue($updatedTerm, $nextClaim, Carbon $now): bool
+    {
+        if ($updatedTerm === null || $nextClaim === null) {
+            return false;
+        }
+
+        return Carbon::parse($updatedTerm)
+            ->addDays((int) $nextClaim)
+            ->lessThanOrEqualTo($now);
     }
 }

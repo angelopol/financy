@@ -8,7 +8,7 @@ FINANCY es una aplicación para gestionar las finanzas personales de los usuario
 - **Inertia.js**: Facilita la integración entre Laravel y React, permitiendo construir aplicaciones de una sola página (SPA) sin necesidad de una API separada.
 - **Laravel**: Framework de PHP utilizado para manejar la lógica del servidor y las operaciones de base de datos.
 - **Tailwind CSS**: Framework de CSS utilizado para diseñar la interfaz de usuario.
-- **MySQL**: Base de datos utilizada para almacenar la información de los usuarios.
+- **MySQL / PostgreSQL (Supabase)**: Base de datos de origen y destino para la migración de datos.
 - **Cron de Laravel**: Utilizado para ejecutar tareas programadas, como la actualización de ingresos y gastos recurrentes.
 
 ## Estructura del Proyecto
@@ -58,3 +58,95 @@ FINANCY utiliza la plantilla de autenticación proporcionada por Laravel para ma
 ### Tareas Programadas
 
 La aplicación utiliza el cron de Laravel para ejecutar tareas programadas, como la actualización de ingresos y gastos recurrentes. Estas tareas se definen en el comando `amounts:cron` y se ejecutan periódicamente para mantener actualizadas las finanzas del usuario.
+
+## Migracion a Supabase (PostgreSQL)
+
+Este proyecto incluye un flujo de migracion para mover un dump MySQL (`.sql`) hacia Supabase PostgreSQL sin perder informacion.
+
+### 1. Configuracion Laravel para Supabase
+
+Usa estos valores en tu `.env` de despliegue (no en el repositorio):
+
+```env
+DB_CONNECTION=pgsql
+DB_HOST=db.YOUR_PROJECT_REF.supabase.co
+DB_PORT=5432
+DB_DATABASE=postgres
+DB_USERNAME=postgres
+DB_PASSWORD=your-supabase-db-password
+DB_SSLMODE=require
+```
+
+### 2. Script de migracion incluido
+
+Archivo: `scripts/migrate-mysql-dump-to-supabase.ps1`
+
+Requisitos:
+
+- Docker Desktop activo.
+- Proyecto Supabase creado.
+- Password de base de datos de Supabase.
+- Dump MySQL en formato `.sql`.
+
+Ejemplo de ejecucion:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\migrate-mysql-dump-to-supabase.ps1 `
+	-DumpPath "C:\ruta\a\financy_backup.sql" `
+	-SupabaseHost "db.TU_PROJECT_REF.supabase.co" `
+	-SupabasePassword "TU_SUPABASE_DB_PASSWORD"
+```
+
+Que hace el script:
+
+- Levanta un MySQL temporal en Docker.
+- Importa tu dump `.sql`.
+- Migra esquema + datos a Supabase con `pgloader`.
+- Preserva identificadores con mayusculas/minusculas (`quote identifiers`) para evitar romper columnas como `NextClaim` y `UpdatedTerm`.
+- Verifica conteo de filas por tabla entre origen y destino.
+- Genera reporte CSV en `storage/logs/supabase-row-count-check-*.csv`.
+
+### 2.1 Alternativa sin Docker (SQL ya generado)
+
+Cuando no hay Docker disponible, puedes usar el SQL de datos ya adaptado para PostgreSQL/Supabase:
+
+- Archivo generado: `database/supabase/financy-data-import.sql`
+- Script generador: `scripts/build-supabase-data-import-from-mysql-dump.ps1`
+
+Regenerar archivo de importacion desde un dump MySQL:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-supabase-data-import-from-mysql-dump.ps1 `
+	-InputDumpPath .\u619022423_financy.sql `
+	-OutputSqlPath .\database\supabase\financy-data-import.sql
+```
+
+Notas de esta alternativa:
+
+- Convierte identificadores MySQL con comillas invertidas a comillas dobles de PostgreSQL.
+- Mantiene columnas sensibles a mayusculas/minusculas (por ejemplo `NextClaim` y `UpdatedTerm`).
+- Reordena inserts para respetar dependencias de claves foraneas.
+- Ajusta secuencias de `id` al final del import.
+
+Para ejecutar en Supabase:
+
+1. Crea el esquema con migraciones de Laravel apuntando a Supabase (`php artisan migrate --force`).
+2. Ejecuta el contenido de `database/supabase/financy-data-import.sql` en el SQL Editor de Supabase.
+
+### 3. Recomendaciones de seguridad
+
+- Ejecutar la migracion sobre un proyecto Supabase nuevo o con esquema `public` vacio.
+- Mantener un respaldo adicional del dump original.
+- No versionar credenciales reales en archivos `.env` dentro del repositorio.
+
+### 4. Verificacion en Laravel
+
+Despues de migrar:
+
+```powershell
+php artisan config:clear
+php artisan cache:clear
+php artisan migrate:status
+```
+
+Si `migrate:status` muestra las migraciones historicas, la tabla `migrations` tambien se migro correctamente.
