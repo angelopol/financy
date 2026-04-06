@@ -60,7 +60,47 @@ foreach ($statement in $insertStatements) {
     $tableName = $matches[1]
     $columnsRaw = $matches[2]
 
+    $columnNames = ($columnsRaw -split ',') |
+        ForEach-Object { ($_ -replace '`', '').Trim() }
+
     $convertedStatement = $statement -replace '`', '"'
+
+    $conflictColumn = $null
+    switch ($tableName) {
+        'users' {
+            if ($columnNames -contains 'email') {
+                $conflictColumn = 'email'
+            }
+        }
+        'password_reset_tokens' {
+            if ($columnNames -contains 'email') {
+                $conflictColumn = 'email'
+            }
+        }
+        'failed_jobs' {
+            if ($columnNames -contains 'uuid') {
+                $conflictColumn = 'uuid'
+            }
+        }
+        'personal_access_tokens' {
+            if ($columnNames -contains 'token') {
+                $conflictColumn = 'token'
+            }
+        }
+    }
+
+    if (-not $conflictColumn -and ($columnNames -contains 'id')) {
+        $conflictColumn = 'id'
+    }
+
+    if ($conflictColumn) {
+        $trimmedStatement = $convertedStatement.TrimEnd()
+        if ($trimmedStatement.EndsWith(';')) {
+            $trimmedStatement = $trimmedStatement.Substring(0, $trimmedStatement.Length - 1)
+        }
+
+        $convertedStatement = $trimmedStatement + ("`nON CONFLICT (""{0}"") DO NOTHING;" -f $conflictColumn)
+    }
 
     if (-not $statementsByTable.ContainsKey($tableName)) {
         $statementsByTable[$tableName] = New-Object System.Collections.Generic.List[string]
