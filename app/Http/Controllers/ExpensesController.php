@@ -8,10 +8,8 @@ use App\Models\Box;
 use App\Models\Saving;
 use App\Models\Expense;
 use App\Models\Movement;
-use App\Services\SplitExpense;
 use App\Support\ProjectFinanceContext;
 use Carbon\Carbon;
-use Illuminate\Validation\ValidationException;
 
 class ExpensesController extends Controller
 {
@@ -35,7 +33,7 @@ class ExpensesController extends Controller
      */
     public function index(Request $request, ProjectFinanceContext $projectFinance)
     {
-        $baseQuery = $projectFinance->apply(Expense::query(), $request)->with('splits');
+        $baseQuery = $projectFinance->apply(Expense::query(), $request);
 
         return Inertia::render('Expenses/Expenses', [
             'auth' => auth()->user(),
@@ -49,7 +47,7 @@ class ExpensesController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request, ProjectFinanceContext $projectFinance, SplitExpense $splitExpense)
+    public function store(Request $request, ProjectFinanceContext $projectFinance)
     {
         $validated = $request->validate([
             'amount' => 'required|numeric',
@@ -59,14 +57,6 @@ class ExpensesController extends Controller
             'term' => 'nullable|numeric|min:1',
             'nextterm' => 'nullable|numeric',
             'project_id' => 'nullable|integer|min:1',
-            'split_mode' => 'nullable|string|in:none,equal,fixed',
-            'split_user_ids' => 'nullable|array',
-            'split_user_ids.*' => 'integer|exists:users,id',
-            'splits' => 'nullable|array',
-            'splits.*.user_id' => 'required_with:splits|integer|exists:users,id',
-            'splits.*.amount' => 'required_with:splits|numeric|min:0',
-            'splits.*.paid_amount' => 'nullable|numeric|min:0',
-            'splits.*.status' => 'nullable|string|in:pending,paid',
         ]);
 
         $rates = EarningsController::GetRates();
@@ -107,18 +97,6 @@ class ExpensesController extends Controller
             'amount' => $expense->amount,
             'provider' => $expense->provider,
         ]);
-
-        try {
-            if (($validated['split_mode'] ?? 'none') === 'equal') {
-                $splitExpense->equally($expense, $validated['split_user_ids'] ?? []);
-            } elseif (($validated['split_mode'] ?? 'none') === 'fixed') {
-                $splitExpense->fixed($expense, $validated['splits'] ?? []);
-            }
-        } catch (\InvalidArgumentException $exception) {
-            throw ValidationException::withMessages([
-                'splits' => $exception->getMessage(),
-            ]);
-        }
 
         return back();
     }
