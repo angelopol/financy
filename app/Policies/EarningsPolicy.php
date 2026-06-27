@@ -21,6 +21,10 @@ class EarningsPolicy
      */
     public function view(User $user, Earning $earning): bool
     {
+        if ($earning->project_id !== null) {
+            return (int) request()->input('project_id', request()->query('project_id')) === (int) $earning->project_id;
+        }
+
         return (int)$earning->user === (int)$user->id;
     }
 
@@ -37,6 +41,10 @@ class EarningsPolicy
      */
     public function update(User $user, Earning $earning): bool
     {
+        if ($earning->project_id !== null) {
+            return (int) request()->input('project_id', request()->query('project_id')) === (int) $earning->project_id;
+        }
+
         return $earning->user()->is($user);
     }
 

@@ -19,8 +19,14 @@ class Expense extends Model
         return $this->belongsTo(ShopListItem::class, 'shop_list_item_id', 'id');
     }
 
+    public function splits()
+    {
+        return $this->hasMany(ExpenseSplit::class);
+    }
+
     protected $fillable = [
         'user',
+        'project_id',
         'shop_list_item_id',
         'recurring_id',
         'description',

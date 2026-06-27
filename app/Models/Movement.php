@@ -11,6 +11,7 @@ class Movement extends Model
 
     protected $fillable = [
         'user',
+        'project_id',
         'type',
         'reference_id',
         'description',

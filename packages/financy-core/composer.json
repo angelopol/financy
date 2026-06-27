@@ -1,0 +1,23 @@
+{
+  "name": "idealo/financy-core",
+  "description": "Project-scoped FinOps core extracted from FINANCY.",
+  "type": "library",
+  "license": "proprietary",
+  "autoload": {
+    "psr-4": {
+      "Idealo\\FinancyCore\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Idealo\\FinancyCore\\FinancyCoreServiceProvider"
+      ]
+    }
+  },
+  "require": {
+    "php": "^8.1",
+    "illuminate/database": "^10.0",
+    "illuminate/support": "^10.0"
+  }
+}

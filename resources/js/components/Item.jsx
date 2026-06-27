@@ -23,7 +23,7 @@ const getCurrencyLabel = (currency) => {
     }
 };
 
-export default function Item({ item, Route, DestroyRoute, openRatesModal }) {
+export default function Item({ item, Route, DestroyRoute, openRatesModal, projectId = null }) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isConfirmDeleteModalOpen, setIsConfirmDeleteModalOpen] = useState(false);
     const [isPurchasedModalOpen, setIsPurchasedModalOpen] = useState(false);
@@ -53,7 +53,7 @@ export default function Item({ item, Route, DestroyRoute, openRatesModal }) {
     };
 
     const handleDelete = () => {
-        Inertia.delete(route(DestroyRoute, item.id));
+        Inertia.delete(route(DestroyRoute, item.id), { data: { project_id: projectId } });
         closeConfirmDeleteModal();
     };
 
@@ -67,9 +67,9 @@ export default function Item({ item, Route, DestroyRoute, openRatesModal }) {
 
     const handleClaim = (item) => {
         if ('OneTimeTase' in item) {
-            Inertia.post(route('earnings.claim', item.id));
+            Inertia.post(route('earnings.claim', item.id), { project_id: projectId });
         } else {
-            Inertia.post(route('expenses.claim', item.id));
+            Inertia.post(route('expenses.claim', item.id), { project_id: projectId });
         }
     };
 
@@ -129,7 +129,7 @@ export default function Item({ item, Route, DestroyRoute, openRatesModal }) {
                     )}
                 </Dropdown.Content>
             </Dropdown>
-            <EditItemModal item={item} isOpen={isEditModalOpen} onClose={closeEditModal} Route={Route} amount={item.status || item.term ? true : null} parallelTase={item.currency ? true : null} />
+            <EditItemModal item={item} isOpen={isEditModalOpen} onClose={closeEditModal} Route={Route} amount={item.status || item.term ? true : null} parallelTase={item.currency ? true : null} projectId={projectId} />
             <ConfirmDeleteModal isOpen={isConfirmDeleteModalOpen} onClose={closeConfirmDeleteModal} onConfirm={handleDelete} />
             <PurchasedModal item={item} isOpen={isPurchasedModalOpen} onClose={closePurchasedModal} />
         </div>

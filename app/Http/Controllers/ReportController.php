@@ -4,21 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\Earning;
 use App\Models\Expense;
+use App\Support\ProjectFinanceContext;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    public function earnings(Request $request)
+    public function earnings(Request $request, ProjectFinanceContext $projectFinance)
     {
         $this->authorize('viewAny', Earning::class);
         $from = $request->query('from');
         $to = $request->query('to');
         $provider = $request->query('provider');
 
-        $query = Earning::where('user', auth()->id())
-            ->whereNull('term');
+        $query = $projectFinance->apply(Earning::query(), $request)->whereNull('term');
 
         if ($from) {
             $query->whereDate('created_at', '>=', $from);
@@ -44,20 +44,20 @@ class ReportController extends Controller
             'from' => $from,
             'to' => $to,
             'provider' => $provider,
+            'projectId' => $projectFinance->id($request),
             'totalAmount' => $totalAmount,
             'itemsAll' => $itemsAll,
         ]);
     }
 
-    public function expenses(Request $request)
+    public function expenses(Request $request, ProjectFinanceContext $projectFinance)
     {
         $this->authorize('viewAny', Expense::class);
         $from = $request->query('from');
         $to = $request->query('to');
         $provider = $request->query('provider');
 
-        $query = Expense::where('user', auth()->id())
-            ->whereNull('term');
+        $query = $projectFinance->apply(Expense::query(), $request)->whereNull('term');
 
         if ($from) {
             $query->whereDate('created_at', '>=', $from);
@@ -83,19 +83,19 @@ class ReportController extends Controller
             'from' => $from,
             'to' => $to,
             'provider' => $provider,
+            'projectId' => $projectFinance->id($request),
             'totalAmount' => $totalAmount,
             'itemsAll' => $itemsAll,
         ]);
     }
 
-    public function earningsCsv(Request $request): StreamedResponse
+    public function earningsCsv(Request $request, ProjectFinanceContext $projectFinance): StreamedResponse
     {
         $this->authorize('viewAny', Earning::class);
         $from = $request->query('from');
         $to = $request->query('to');
         $provider = $request->query('provider');
-        $query = Earning::where('user', auth()->id())
-            ->whereNull('term');
+        $query = $projectFinance->apply(Earning::query(), $request)->whereNull('term');
         if ($from) {
             $query->whereDate('created_at', '>=', $from);
         }
@@ -154,14 +154,13 @@ class ReportController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    public function expensesCsv(Request $request): StreamedResponse
+    public function expensesCsv(Request $request, ProjectFinanceContext $projectFinance): StreamedResponse
     {
         $this->authorize('viewAny', Expense::class);
         $from = $request->query('from');
         $to = $request->query('to');
         $provider = $request->query('provider');
-        $query = Expense::where('user', auth()->id())
-            ->whereNull('term');
+        $query = $projectFinance->apply(Expense::query(), $request)->whereNull('term');
         if ($from) {
             $query->whereDate('created_at', '>=', $from);
         }

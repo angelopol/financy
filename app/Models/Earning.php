@@ -16,6 +16,7 @@ class Earning extends Model
 
     protected $fillable = [
         'user',
+        'project_id',
         'recurring_id',
         'description',
         'amount',

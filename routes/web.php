@@ -7,6 +7,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ShopListController;
 use App\Http\Controllers\CalculatorController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ExpenseSplitController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -40,6 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/earnings/{earning}/claim', [EarningsController::class, 'claim'])->name('earnings.claim');
     Route::resource('/expenses', ExpensesController::class)->only(['index', 'store', 'update', 'destroy'])->middleware('auth');
     Route::post('/expenses/{expense}/claim', [ExpensesController::class, 'claim'])->name('expenses.claim');
+    Route::put('/expenses/{expense}/splits', [ExpenseSplitController::class, 'update'])->name('expenses.splits.update');
 
     Route::post('/shop-list', [ShopListController::class, 'store'])->name('shoplist.store');
     Route::get('/shop-list', [ShopListController::class, 'index'])->name('shoplist.index');

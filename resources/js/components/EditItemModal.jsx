@@ -6,9 +6,10 @@ import PrimaryButton from '@/components/PrimaryButton';
 import SelectInput from '@/components/SelectInput';
 import { useForm } from '@inertiajs/react';
 
-export default function EditItemModal({ item, isOpen, onClose, Route, amount = null, parallelTase = null }) {
+export default function EditItemModal({ item, isOpen, onClose, Route, amount = null, parallelTase = null, projectId = null }) {
     let values = {
         description: item.description,
+        project_id: projectId,
     };
     if (amount) {
         values = {

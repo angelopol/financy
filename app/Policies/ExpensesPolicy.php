@@ -21,6 +21,10 @@ class ExpensesPolicy
      */
     public function view(User $user, Expense $expense): bool
     {
+        if ($expense->project_id !== null) {
+            return (int) request()->input('project_id', request()->query('project_id')) === (int) $expense->project_id;
+        }
+
         return (int)$expense->user === (int)$user->id;
     }
 
@@ -37,6 +41,10 @@ class ExpensesPolicy
      */
     public function update(User $user, Expense $expense): bool
     {
+        if ($expense->project_id !== null) {
+            return (int) request()->input('project_id', request()->query('project_id')) === (int) $expense->project_id;
+        }
+
         return $expense->user()->is($user);
     }
 

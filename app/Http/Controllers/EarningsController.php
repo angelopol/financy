@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use App\Models\Box;
 use App\Models\Earning;
+use App\Models\Movement;
 use App\Models\Saving;
+use App\Support\ProjectFinanceContext;
 use Carbon\Carbon;
 use Exception;
 
@@ -34,12 +36,15 @@ class EarningsController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request, ProjectFinanceContext $projectFinance)
     {
+        $baseQuery = $projectFinance->apply(Earning::query(), $request);
+
         return Inertia::render('Earnings/Earnings', [
             'auth' => auth()->user(),
-            'RecurringEarnings' => Earning::where('user', auth()->id())->where('term', '!=', null)->latest()->paginate(5),
-            'OneTimeEarnings' => Earning::where('user', auth()->id())->where('term', null)->latest()->paginate(3),
+            'projectId' => $projectFinance->id($request),
+            'RecurringEarnings' => (clone $baseQuery)->where('term', '!=', null)->latest()->paginate(5),
+            'OneTimeEarnings' => (clone $baseQuery)->where('term', null)->latest()->paginate(3),
             'rates' => self::GetRates()
         ]);
     }
@@ -47,7 +52,7 @@ class EarningsController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request, ProjectFinanceContext $projectFinance)
     {
         $validated = $request->validate([
             'amount' => 'required|numeric',
@@ -55,7 +60,8 @@ class EarningsController extends Controller
             'currency' => 'required|string|in:$,bs,$bcv,$parallel',
             'provider' => 'required|string|in:box,savings',
             'term' => 'nullable|numeric|min:1',
-            'nextterm' => 'nullable|numeric'
+            'nextterm' => 'nullable|numeric',
+            'project_id' => 'nullable|integer|min:1',
         ]);
 
         $rates = self::GetRates();
@@ -63,15 +69,10 @@ class EarningsController extends Controller
         $bcv = $rates['bcv'];
 
         $validated['user'] = auth()->id();
+        $validated['project_id'] = $projectFinance->id($request);
         
         $amount = self::ConvertAmount($validated['currency'], $validated['amount'], $parallel, $bcv);
         
-
-        if($validated['provider'] == 'box'){
-            $provider = Box::where('user', auth()->id())->first();
-        } else {
-            $provider = Saving::where('user', auth()->id())->first();
-        }
 
         if(isset($validated['term'])){
             $validated['UpdatedTerm'] = now();
@@ -84,8 +85,16 @@ class EarningsController extends Controller
                 $validated['currency'] = '$';
                 $validated['OneTimeTase'] = $parallel;
             }
-            $provider->amount += $amount;
-            $provider->save();
+
+            if ($validated['project_id'] === null) {
+                if($validated['provider'] == 'box'){
+                    $provider = Box::where('user', auth()->id())->first();
+                } else {
+                    $provider = Saving::where('user', auth()->id())->first();
+                }
+                $provider->amount += $amount;
+                $provider->save();
+            }
         }
 
         if(isset($validated['nextterm'])){
@@ -94,7 +103,17 @@ class EarningsController extends Controller
             $validated['NextClaim'] = $validated['term'];
         }
 
-        $request->user()->earnings()->create($validated);
+        $earning = $request->user()->earnings()->create($validated);
+
+        Movement::create([
+            'user' => auth()->id(),
+            'project_id' => $earning->project_id,
+            'type' => 'earning',
+            'reference_id' => $earning->id,
+            'description' => $earning->description,
+            'amount' => $earning->amount,
+            'provider' => $earning->provider,
+        ]);
 
         return back();
     }
@@ -109,7 +128,8 @@ class EarningsController extends Controller
         $validated = $request->validate([
             'description' => 'nullable|string|max:500',
             'amount' => 'nullable|numeric',
-            'currency' => 'nullable|string|in:$,bs,$bcv,$parallel'
+            'currency' => 'nullable|string|in:$,bs,$bcv,$parallel',
+            'project_id' => 'nullable|integer|min:1'
         ]);
 
         foreach($validated as $key => $value){
@@ -119,6 +139,12 @@ class EarningsController extends Controller
         }
 
         $earning->update($validated);
+        Movement::where('type', 'earning')->where('reference_id', $earning->id)->update([
+            'project_id' => $earning->project_id,
+            'description' => $earning->description,
+            'amount' => $earning->amount,
+            'provider' => $earning->provider,
+        ]);
 
         return back();
     }
@@ -130,7 +156,7 @@ class EarningsController extends Controller
     {
         $this->authorize('delete', $earning);
 
-        if($earning->term == null){
+        if($earning->term == null && $earning->project_id === null){
             if($earning->provider == 'box'){
                 $provider = Box::where('user', auth()->id())->first();
             } else {
@@ -139,6 +165,7 @@ class EarningsController extends Controller
             $provider->amount -= $earning->amount;
             $provider->save();
         }
+        Movement::where('type', 'earning')->where('reference_id', $earning->id)->delete();
         $earning->delete();
 
         return back();
@@ -150,6 +177,10 @@ class EarningsController extends Controller
         $rates = EarningsController::GetRates();
         $parallel = $rates['parallel'];
         $bcv = $rates['bcv'];
+
+        if ($earning->project_id !== null) {
+            return back();
+        }
 
         if ($earning->provider == 'box') {
             $provider = Box::where('user', $earning->user)->first();
