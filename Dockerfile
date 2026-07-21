@@ -14,7 +14,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends libonig-dev libpq-dev libxml2-dev libzip-dev unzip \
     && docker-php-ext-install -j"$(nproc)" bcmath dom mbstring opcache pdo_mysql pdo_pgsql zip \
     && a2enmod expires headers rewrite \
-    && a2dismod autoindex \
+    && sed -i '/Alias \/icons\//d' /etc/apache2/mods-enabled/autoindex.conf \
+    && ! grep -Eq '^[[:space:]]*Alias[[:space:]]+/icons/' /etc/apache2/mods-enabled/autoindex.conf \
     && rm -rf /var/lib/apt/lists/*
 
 FROM php-base AS backend
