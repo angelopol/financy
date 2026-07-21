@@ -25,13 +25,13 @@ services:
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_HOST
-        sync: false
+        value: aws-1-us-east-1.pooler.supabase.com
       - key: DB_PORT
         value: "5432"
       - key: DB_DATABASE
         value: postgres
       - key: DB_USERNAME
-        value: postgres
+        value: postgres.hbveuxtyycpwdtgbugbu
       - key: DB_PASSWORD
         sync: false
       - key: DB_SSLMODE

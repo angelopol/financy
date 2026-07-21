@@ -32,11 +32,16 @@ ENV APP_ENV=production \
 WORKDIR /var/www/html
 COPY --from=backend /var/www/html /var/www/html
 COPY --from=frontend /app/public/build /var/www/html/public/build
+COPY public/icons/ /var/www/html/public/icons/
 COPY docker/apache-vhost.conf /etc/apache2/sites-available/000-default.conf
 COPY docker/entrypoint.sh /usr/local/bin/render-entrypoint
 RUN chmod +x /usr/local/bin/render-entrypoint \
     && mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessions \
         storage/framework/views storage/logs bootstrap/cache \
+    && test -s public/icons/icon.svg \
+    && test -s public/icons/maskable.svg \
+    && test -s public/icons/icon-192.png \
+    && chmod -R a+rX public/icons \
     && chown -R www-data:www-data storage bootstrap/cache
 
 EXPOSE 10000

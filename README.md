@@ -97,13 +97,18 @@ Usa estos valores en tu `.env` de despliegue (no en el repositorio):
 
 ```env
 DB_CONNECTION=pgsql
-DB_HOST=db.YOUR_PROJECT_REF.supabase.co
+DB_HOST=YOUR_SESSION_POOLER_HOST.pooler.supabase.com
 DB_PORT=5432
 DB_DATABASE=postgres
-DB_USERNAME=postgres
+DB_USERNAME=postgres.YOUR_PROJECT_REF
 DB_PASSWORD=your-supabase-db-password
 DB_SSLMODE=require
 ```
+
+Para Render usa los valores de **Connect > Session Pooler** en Supabase. La
+conexion directa `db.PROJECT_REF.supabase.co` usa IPv6 y no es compatible con la
+red de Render. Al usar variables separadas, `DB_PASSWORD` conserva la contrasena
+literal; el percent-encoding solo es necesario dentro de una URL de conexion.
 
 ### 2. Script de migracion incluido
 
