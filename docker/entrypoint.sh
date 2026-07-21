@@ -20,11 +20,11 @@ if [ ! -e public/storage ]; then
 fi
 
 php artisan config:cache
+
+echo "Running database migrations..."
+php artisan migrate --force --no-interaction
+
 php artisan route:cache
 php artisan view:cache
-
-if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
-    php artisan migrate --force
-fi
 
 exec "$@"

@@ -19,8 +19,10 @@ sirve Laravel con Apache en el puerto indicado por Render.
 `APP_KEY` se genera una sola vez desde el Blueprint. No la cambies despues de que
 la aplicacion tenga usuarios, porque invalidaria sesiones y datos cifrados. Los
 logs se envian a `stderr`, por lo que aparecen directamente en el panel de Render.
-En un servicio pago puedes mover la migracion a `preDeployCommand` y cambiar
-`RUN_MIGRATIONS` a `false`.
+La imagen ejecuta siempre `php artisan migrate --force --no-interaction` al
+arrancar y no inicia Apache si una migracion falla. Esto evita desplegar codigo
+que consulte columnas que todavia no existen. En un servicio pago puede moverse
+esta operacion a un `preDeployCommand` dedicado.
 
 El filesystem de Render es efimero. Actualmente FINANCY no guarda archivos de
 usuario, pero si agregas uploads debes configurar S3/Supabase Storage o un disco

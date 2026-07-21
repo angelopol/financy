@@ -30,6 +30,7 @@ FROM php-base AS production
 
 ENV APP_ENV=production \
     APP_DEBUG=false \
+    RUN_MIGRATIONS=true \
     PORT=10000
 WORKDIR /var/www/html
 COPY --from=backend /var/www/html /var/www/html
