@@ -23,6 +23,18 @@ use Inertia\Inertia;
 */
 
 Route::get('/up', function () {
+    $requiredAssets = [
+        public_path('build/manifest.json'),
+        public_path('icons/icon.svg'),
+        public_path('icons/maskable.svg'),
+    ];
+
+    foreach ($requiredAssets as $asset) {
+        if (! is_file($asset)) {
+            return response()->json(['status' => 'unhealthy'], 503);
+        }
+    }
+
     return response()->json(['status' => 'ok']);
 })->name('health');
 

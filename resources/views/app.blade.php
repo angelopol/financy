@@ -10,6 +10,7 @@
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
@@ -29,7 +30,9 @@
         <script>
             if ('serviceWorker' in navigator) {
                 window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
+                    navigator.serviceWorker.register('/service-worker.js', {
+                        updateViaCache: 'none',
+                    }).then((registration) => registration.update()).catch(()=>{});
                 });
             }
         </script>

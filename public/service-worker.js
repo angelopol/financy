@@ -1,7 +1,5 @@
-// Simple offline-first service worker
-const CACHE_NAME = 'financy-cache-v1';
+const CACHE_NAME = 'financy-static-v2';
 const PRECACHE_URLS = [
-  '/',
   '/manifest.webmanifest',
   '/icons/icon.svg',
   '/icons/maskable.svg',
@@ -12,30 +10,67 @@ const PRECACHE_URLS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+
+    // A missing optional icon must not abort the complete worker installation.
+    await Promise.allSettled(PRECACHE_URLS.map(async (url) => {
+      const response = await fetch(url, { cache: 'reload' });
+
+      if (response.ok) {
+        await cache.put(url, response);
+      }
+    }));
+
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => Promise.all(
-      keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
-    ))
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+
+    await Promise.all(
+      keys
+        .filter((key) => key.startsWith('financy-') && key !== CACHE_NAME)
+        .map((key) => caches.delete(key))
+    );
+
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  if (request.method !== 'GET') return;
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const fetchPromise = fetch(request).then((networkResponse) => {
-        const responseClone = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-        return networkResponse;
-      }).catch(() => cached);
-      return cached || fetchPromise;
-    })
-  );
+  const url = new URL(request.url);
+
+  if (
+    request.method !== 'GET'
+    || url.origin !== self.location.origin
+    || !(url.pathname === '/manifest.webmanifest' || url.pathname.startsWith('/icons/'))
+  ) {
+    return;
+  }
+
+  event.respondWith((async () => {
+    const cached = await caches.match(request);
+    const fetchAndCache = async () => {
+      const response = await fetch(request);
+
+      if (response.ok) {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, response.clone());
+      }
+
+      return response;
+    };
+
+    if (cached) {
+      event.waitUntil(fetchAndCache().catch(() => undefined));
+
+      return cached;
+    }
+
+    return fetchAndCache();
+  })());
 });
