@@ -10,6 +10,7 @@ export default function UpdateProfileInformation({ mustVerifyEmail, status, clas
 
     const { data, setData, patch, errors, processing, recentlySuccessful } = useForm({
         email: user.email,
+        monthly_expense_limit: user.monthly_expense_limit || '',
     });
 
     const submit = (e) => {
@@ -43,6 +44,12 @@ export default function UpdateProfileInformation({ mustVerifyEmail, status, clas
                     />
 
                     <InputError className="mt-2" message={errors.email} />
+                </div>
+
+                <div>
+                    <InputLabel htmlFor="monthly_expense_limit" value="Monthly expense limit (USD)" />
+                    <TextInput id="monthly_expense_limit" type="number" min="0" step="0.01" className="mt-1 block w-full" value={data.monthly_expense_limit} onChange={(e) => setData('monthly_expense_limit', e.target.value)} />
+                    <InputError className="mt-2" message={errors.monthly_expense_limit} />
                 </div>
 
                 {mustVerifyEmail && user.email_verified_at === null && (

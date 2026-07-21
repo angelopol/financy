@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user')->constrained()->onDelete('cascade')->onUpdate('cascade');
             $table->string('description', 500);
             $table->decimal('amount');
-            $table->enum('currency', ['$', 'bs', '$bcv', '$parallel']);
+            $table->enum('currency', ['$', 'bs', '$bcv', '$parallel', '€']);
             $table->enum('provider', ['box', 'savings']);
             $table->integer('term')->nullable();
             $table->integer('NextClaim')->nullable();

@@ -18,6 +18,8 @@ const getCurrencyLabel = (currency) => {
             return 'Dollars in bolivares indexed in BCV';
         case '$parallel':
             return 'Dollars in bolivares indexed in parallel tase';
+        case '€':
+            return '€';
         default:
             return currency;
     }
@@ -78,10 +80,11 @@ export default function Item({ item, Route, DestroyRoute, openRatesModal, projec
             <div>
                 <h3 className="text-lg font-semibold">{item.description}</h3>
                 <p className="text-sm text-gray-500" onClick={() => openRatesModal(item.amount, item.currency ? item.currency : '$')}>{item.amount} {item.currency ? (getCurrencyLabel(item.currency)) : '$'}</p>
-                {item.term ? (
+                {(item.term || item.claim_day) ? (
                     <>
-                        <p className="text-sm text-gray-500">Claim cycle of {item.term} days</p>
-                        <p className="text-sm text-gray-500">Next claim {dayjs(item.UpdatedTerm).add(item.NextClaim, 'day').fromNow()}</p>
+                        <p className="text-sm text-gray-500">{item.recurrence_type === 'monthly' ? `Claims on day ${item.claim_day} of each month` : `Claim cycle of ${item.term} days`}</p>
+                        <p className="text-sm text-gray-500">Next claim {dayjs(item.next_claim_at).fromNow()}</p>
+                        <p className={`text-xs ${item.auto_claim ? 'text-green-600' : 'text-yellow-500'}`}>{item.auto_claim ? 'Automatic claim' : 'Manual claim only'}</p>
                     </>
                 ) : item.OneTimeTase ? (
                     <p className="text-sm text-gray-500">Parallel exchange tase of {item.OneTimeTase}</p>
@@ -89,6 +92,8 @@ export default function Item({ item, Route, DestroyRoute, openRatesModal, projec
                 {item.provider && (
                     <p className="text-sm text-gray-500">Saved in {item.provider}</p>
                 )}
+                {item.slug && <div className="mt-1 flex flex-wrap gap-1">{item.slug.split(' ').map((tag) => <span key={tag} className="rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-200">{tag}</span>)}</div>}
+                {item.not_discount && <p className="text-xs text-indigo-500">Already registered — balance not discounted</p>}
                 <p className="text-sm text-gray-500">{dayjs(item.created_at).fromNow()}</p>
                 {item.status ? (
                     <p className={`text-sm ${item.status === 'pending' ? 'text-yellow-500' : item.status === 'purchased' ? 'text-green-500' : 'text-gray-500'}`}>{item.status}</p>
@@ -129,7 +134,7 @@ export default function Item({ item, Route, DestroyRoute, openRatesModal, projec
                     )}
                 </Dropdown.Content>
             </Dropdown>
-            <EditItemModal item={item} isOpen={isEditModalOpen} onClose={closeEditModal} Route={Route} amount={item.status || item.term ? true : null} parallelTase={item.currency ? true : null} projectId={projectId} />
+            <EditItemModal item={item} isOpen={isEditModalOpen} onClose={closeEditModal} Route={Route} amount={item.status || item.term || item.claim_day ? true : null} parallelTase={item.currency ? true : null} projectId={projectId} />
             <ConfirmDeleteModal isOpen={isConfirmDeleteModalOpen} onClose={closeConfirmDeleteModal} onConfirm={handleDelete} />
             <PurchasedModal item={item} isOpen={isPurchasedModalOpen} onClose={closePurchasedModal} />
         </div>

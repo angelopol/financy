@@ -16,6 +16,8 @@ services:
         generateValue: true
       - key: APP_URL
         sync: false
+      - key: APP_TIMEZONE
+        value: America/Caracas
       - key: LOG_CHANNEL
         value: stderr
       - key: LOG_LEVEL
@@ -46,3 +48,19 @@ services:
         value: sync
       - key: FILESYSTEM_DISK
         value: local
+      - key: MAIL_MAILER
+        value: smtp
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_ENCRYPTION
+        value: tls
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM_ADDRESS
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: FINANCY

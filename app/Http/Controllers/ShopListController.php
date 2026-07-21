@@ -2,178 +2,129 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use App\Models\ShopListItem;
-use App\Models\Box;
-use App\Models\Saving;
 use App\Models\Expense;
+use App\Models\Movement;
+use App\Models\ShopListItem;
+use App\Services\ExchangeRateService;
+use App\Services\FinanceAccountService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class ShopListController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         return Inertia::render('ShopList/ShopList', [
             'auth' => auth()->user(),
             'ShopListItems' => ShopListItem::where('user', auth()->id())
-                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
-                ->latest()->paginate(10),
-            'TotalAmount' => ShopListItem::where('user', auth()->id())
-                ->where('status', 'pending')
-                ->sum('amount'),
-            'rates' => EarningsController::GetRates()
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest()->paginate(10),
+            'TotalAmount' => ShopListItem::where('user', auth()->id())->where('status', 'pending')->sum('amount'),
+            'rates' => EarningsController::GetRates(),
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request, ExchangeRateService $rates)
     {
         $validated = $request->validate([
-            'amount' => 'required|numeric',
+            'amount' => 'required|numeric|min:0',
             'description' => 'required|string|max:500',
-            'currency' => 'required|string|in:$,bs,$bcv'
+            'currency' => 'required|string|in:$,bs,$bcv,$parallel,€',
         ]);
-
-        $rates = EarningsController::GetRates();
-        $parallel = $rates['parallel'];
-        $bcv = $rates['bcv'];
-
         $validated['user'] = auth()->id();
         $validated['status'] = 'pending';
-        $validated['amount'] = EarningsController::ConvertAmount($validated['currency'], $validated['amount'], $parallel, $bcv);
-
-        $request->user()->ShopListItems()->create($validated);
+        $validated['amount'] = $rates->toDollars($validated['currency'], (float) $validated['amount']);
+        unset($validated['currency']);
+        ShopListItem::create($validated);
 
         return back();
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, ShopListItem $ShopListItem)
+    public function update(Request $request, ShopListItem $ShopListItem, ExchangeRateService $rates)
     {
         $this->authorize('update', $ShopListItem);
-
         $validated = $request->validate([
-            'amount' => 'nullable|numeric',
-            'description' => 'nullable|string|max:500',
-            'currency' => 'nullable|string|in:$,bs,$bcv'
+            'amount' => 'sometimes|numeric|min:0',
+            'description' => 'sometimes|string|max:500',
+            'currency' => 'sometimes|string|in:$,bs,$bcv,$parallel,€',
         ]);
-
-        if(isset($validated['amount'])){
-            $rates = EarningsController::GetRates();
-            $parallel = $rates['parallel'];
-            $bcv = $rates['bcv'];
-            $validated['amount'] = EarningsController::ConvertAmount($validated['currency'], $validated['amount'], $parallel, $bcv);
+        if (isset($validated['amount'])) {
+            $validated['amount'] = $rates->toDollars($validated['currency'] ?? '$', (float) $validated['amount']);
         }
-
-        foreach($validated as $key => $value){
-            if($value == null){
-                unset($validated[$key]);
-            }
-        }
-
+        unset($validated['currency']);
         $ShopListItem->update($validated);
 
         return back();
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(ShopListItem $ShopListItem)
     {
         $this->authorize('delete', $ShopListItem);
-
         $ShopListItem->delete();
 
         return back();
     }
 
-    public function purchase(Request $request, ShopListItem $ShopListItem)
+    public function purchase(Request $request, ShopListItem $ShopListItem, FinanceAccountService $accounts)
     {
         $this->authorize('purchased', $ShopListItem);
-
         $validated = $request->validate([
-            'provider' => 'required|string|in:box,savings',
-            'amount' => 'required|numeric|min:0'
+            'provider' => 'required|string|in:box,savings,auto',
+            'amount' => 'required|numeric|min:0',
+            'not_discount' => 'nullable|boolean',
         ]);
 
-        if($validated['provider'] == 'box'){
-            $provider = Box::where('user', auth()->id())->first();
-            $otherProvider = Saving::where('user', auth()->id())->first();
-        } else {
-            $provider = Saving::where('user', auth()->id())->first();
-            $otherProvider = Box::where('user', auth()->id())->first();
-        }
-        ExpensesController::SubtractProvider($provider, $otherProvider, floatval($validated['amount']));
+        DB::transaction(function () use ($request, $ShopListItem, $validated, $accounts) {
+            $notDiscount = $request->boolean('not_discount');
+            $provider = $validated['provider'] === 'auto' ? $accounts->chooseProvider(auth()->id()) : $validated['provider'];
+            $ShopListItem->update([
+                'provider' => $notDiscount ? null : $provider,
+                'amount' => (float) $validated['amount'],
+                'status' => 'purchased',
+                'not_discount' => $notDiscount,
+            ]);
+            if ($notDiscount) {
+                return;
+            }
 
-        $ShopListItem->provider = $validated['provider'];
-        $ShopListItem->amount = floatval($validated['amount']);
-        $ShopListItem->status = 'purchased';
-        $ShopListItem->save();
+            $provider = $accounts->debit(auth()->id(), $validated['provider'], (float) $validated['amount']);
+            $ShopListItem->update(['provider' => $provider]);
+            $expense = Expense::create([
+                'user' => auth()->id(),
+                'shop_list_item_id' => $ShopListItem->id,
+                'description' => $ShopListItem->description,
+                'amount' => (float) $validated['amount'],
+                'provider' => $provider,
+                'recurrence_type' => 'one_time',
+            ]);
+            Movement::create([
+                'user' => auth()->id(), 'type' => 'expense', 'reference_id' => $expense->id,
+                'description' => $expense->description, 'amount' => $expense->amount, 'provider' => $expense->provider,
+            ]);
+        });
 
-        // Create a one-time expense entry for history using the chosen amount
-        $expenseData = [
-            'description' => $ShopListItem->description,
-            'amount' => floatval($validated['amount']),
-            'provider' => $validated['provider'],
-            'term' => null,
-            'NextClaim' => null,
-            'UpdatedTerm' => null,
-        ];
-        // Link the created expense to this shop list item to avoid double-refunds later
-        $expenseData['shop_list_item_id'] = $ShopListItem->id;
-        $request->user()->expenses()->create($expenseData);
-
-        return back();
+        return back()->with('flash', app(ExpensesController::class)->limitFlash($request, 'Purchase registered.'));
     }
 
     public function gift(ShopListItem $ShopListItem)
     {
         $this->authorize('gift', $ShopListItem);
-
-        // If an expense was created when it was purchased, delete it to prevent refunds elsewhere
-        if ($ShopListItem->expense) {
-            // Deleting the expense will not refund (destroy() only refunds when term is null and we call it). Here we directly delete.
-            $ShopListItem->expense()->delete();
-        }
-
-        $ShopListItem->provider = null;
-        $ShopListItem->status = 'purchased';
-        $ShopListItem->save();
+        $ShopListItem->update(['provider' => null, 'status' => 'purchased', 'not_discount' => true]);
 
         return back();
     }
 
-    public function pending(ShopListItem $ShopListItem)
+    public function pending(ShopListItem $ShopListItem, FinanceAccountService $accounts)
     {
         $this->authorize('pending', $ShopListItem);
-
-        // If there is a linked expense for this purchase, delete it and DO NOT refund here to avoid double adjustments.
-        if ($ShopListItem->expense) {
-            $ShopListItem->expense()->delete();
-        } else {
-            // Backward compatibility: For old purchases without linked expense, perform the manual refund once.
-            if($ShopListItem->provider != null){
-                if($ShopListItem->provider == 'box'){
-                    $provider = Box::where('user', auth()->id())->first();
-                } else {
-                    $provider = Saving::where('user', auth()->id())->first();
-                }
-                $provider->amount += $ShopListItem->amount;
-                $provider->save();
+        DB::transaction(function () use ($ShopListItem, $accounts) {
+            if ($ShopListItem->expense && ! $ShopListItem->not_discount) {
+                $accounts->credit(auth()->id(), $ShopListItem->expense->provider, (float) $ShopListItem->expense->amount);
+                Movement::where('type', 'expense')->where('reference_id', $ShopListItem->expense->id)->delete();
+                $ShopListItem->expense->delete();
             }
-        }
-
-        $ShopListItem->provider = null;
-        $ShopListItem->status = 'pending';
-        $ShopListItem->save();
+            $ShopListItem->update(['provider' => null, 'status' => 'pending', 'not_discount' => false]);
+        });
 
         return back();
     }

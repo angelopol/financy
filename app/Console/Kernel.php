@@ -12,7 +12,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->command('amounts:cron')->twiceDaily(11, 23);
+        $schedule->command('amounts:cron')->twiceDaily(11, 23)->withoutOverlapping();
+        $schedule->command('earnings:send-reminders')->dailyAt('08:00')->withoutOverlapping();
     }
 
     /**

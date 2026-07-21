@@ -64,8 +64,10 @@ export default function CreateShopListItemForm() {
                     className="mt-1 block w-full"
                 >
                     <option value="$">Dollar</option>
+                    <option value="€">Euro</option>
                     <option value="bs">Bolivares</option>
                     <option value="$bcv">Dollars in bolivares indexed in BCV</option>
+                    <option value="$parallel">Bolivares indexed in parallel rate</option>
                 </SelectInput>
 
                 <InputError message={errors.currency} className="mt-2" />

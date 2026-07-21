@@ -3,10 +3,11 @@ import ApplicationLogo from '@/components/ApplicationLogo';
 import Dropdown from '@/components/Dropdown';
 import NavLink from '@/components/NavLink';
 import ResponsiveNavLink from '@/components/ResponsiveNavLink';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 
 export default function Authenticated({ user, header, children }) {
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
+    const { flash } = usePage().props;
 
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -41,6 +42,9 @@ export default function Authenticated({ user, header, children }) {
                                 </NavLink>
                                 <NavLink href={route('calculator.show')} active={route().current('calculator.show')}>
                                     Calculator
+                                </NavLink>
+                                <NavLink href={route('budgets.index')} active={route().current('budgets.*')}>
+                                    Budgets
                                 </NavLink>
                             </div>
                         </div>
@@ -131,6 +135,9 @@ export default function Authenticated({ user, header, children }) {
                         <ResponsiveNavLink href={route('calculator.show')} active={route().current('calculator.show')}>
                             Calculator
                         </ResponsiveNavLink>
+                        <ResponsiveNavLink href={route('budgets.index')} active={route().current('budgets.*')}>
+                            Budgets
+                        </ResponsiveNavLink>
                     </div>
 
                     <div className="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
@@ -155,6 +162,7 @@ export default function Authenticated({ user, header, children }) {
                 </header>
             )}
 
+            {flash?.message && <div className={`mx-auto mt-4 max-w-7xl rounded-md border p-4 text-sm ${flash.type === 'error' ? 'border-red-500 bg-red-50 text-red-800' : flash.type === 'warning' ? 'border-yellow-500 bg-yellow-50 text-yellow-800' : 'border-green-500 bg-green-50 text-green-800'}`}>{flash.message}</div>}
             <main>{children}</main>
         </div>
     );

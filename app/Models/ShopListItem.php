@@ -24,8 +24,11 @@ class ShopListItem extends Model
         'description',
         'amount',
         'provider',
-        'status'
+        'status',
+        'not_discount',
     ];
+
+    protected $casts = ['not_discount' => 'boolean'];
 
     protected $table = 'shop_list_items';
 }

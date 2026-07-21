@@ -5,11 +5,13 @@ import InputLabel from '@/components/InputLabel';
 import SelectInput from '@/components/SelectInput';
 import { useForm } from '@inertiajs/react';
 import TextInput from '@/components/TextInput';
+import Checkbox from '@/components/Checkbox';
 
 export default function PurchasedModal({ isOpen, onClose, item }) {
     const { data, setData, post, processing, errors } = useForm({
-        provider: 'box',
+        provider: 'auto',
         amount: item.amount,
+        not_discount: false,
     });
 
     const submit = (e) => {
@@ -33,8 +35,9 @@ export default function PurchasedModal({ isOpen, onClose, item }) {
                             className="mt-1 block w-full"
                             required
                         >
-                            <option value="box">Box</option>
-                            <option value="savings">Savings</option>
+                            <option value="auto">Automatic / use both</option>
+                            <option value="box">Box first</option>
+                            <option value="savings">Savings first</option>
                         </SelectInput>
                         <InputError message={errors.provider} className="mt-2" />
                     </div>
@@ -51,6 +54,8 @@ export default function PurchasedModal({ isOpen, onClose, item }) {
                         />
                         <InputError message={errors.amount} className="mt-2" />
                     </div>
+                    <label className="mt-4 flex items-center gap-2 text-sm text-gray-300"><Checkbox checked={data.not_discount} onChange={(e) => setData('not_discount', e.target.checked)} />Not discount (already registered)</label>
+                    <p className="mt-1 text-xs text-gray-500">When enabled, no balance is reduced and no expense history is created.</p>
                 </div>
                 <div className="mt-4 flex justify-end">
                     <PrimaryButton type="button" onClick={onClose} className="mr-2">Cancel</PrimaryButton>

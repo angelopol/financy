@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\RecurringSchedule;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -19,14 +20,33 @@ class Earning extends Model
         'project_id',
         'recurring_id',
         'description',
+        'slug',
         'amount',
         'currency',
         'provider',
         'term',
         'NextClaim',
         'UpdatedTerm',
-        'OneTimeTase'
+        'OneTimeTase',
+        'recurrence_type',
+        'claim_day',
+        'auto_claim',
+        'last_notified_claim_at',
     ];
+
+    protected $casts = [
+        'auto_claim' => 'boolean',
+        'claim_day' => 'integer',
+        'UpdatedTerm' => 'datetime',
+        'last_notified_claim_at' => 'datetime',
+    ];
+
+    protected $appends = ['next_claim_at'];
+
+    public function getNextClaimAtAttribute(): ?string
+    {
+        return app(RecurringSchedule::class)->dueAt($this)?->toIso8601String();
+    }
 
     public function parentRecurring()
     {

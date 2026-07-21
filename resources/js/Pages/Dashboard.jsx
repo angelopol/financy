@@ -4,7 +4,7 @@ import { useState } from 'react';
 import AmountConversionModal from '@/components/AmountConversionModal';
 import { Link } from '@inertiajs/react';
 
-export default function Dashboard({ auth, rates, savings, box, ExpectedSavings, ExpectedBox }) {
+export default function Dashboard({ auth, rates, savings, box, ExpectedSavings, ExpectedBox, expenseLimit }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedAmount, setSelectedAmount] = useState(0);
     const [selectedCurrency, setSelectedCurrency] = useState('$');
@@ -65,6 +65,12 @@ export default function Dashboard({ auth, rates, savings, box, ExpectedSavings, 
                             </div>
                         </div>
                     </div>
+                    {Number(expenseLimit?.limit || 0) > 0 && <div className="mt-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                        <div className="mb-2 flex justify-between"><h3 className="font-semibold">Monthly expense limit</h3><span>{Number(expenseLimit.spent).toFixed(2)}$ / {Number(expenseLimit.limit).toFixed(2)}$</span></div>
+                        <div className="h-4 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"><div className={`h-full transition-all ${expenseLimit.percentage < 50 ? 'bg-green-500' : expenseLimit.percentage < 80 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${Math.min(100, expenseLimit.percentage)}%` }} /></div>
+                        <p className="mt-2 text-sm text-gray-500">{Number(expenseLimit.percentage).toFixed(1)}% used this month</p>
+                        {expenseLimit.percentage > 100 && <p className="mt-2 font-semibold text-red-500">You have exceeded your monthly expense limit.</p>}
+                    </div>}
                 </div>
             </div>
 

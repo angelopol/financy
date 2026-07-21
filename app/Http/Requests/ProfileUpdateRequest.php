@@ -17,6 +17,7 @@ class ProfileUpdateRequest extends FormRequest
     {
         return [
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($this->user()->id)],
+            'monthly_expense_limit' => ['nullable', 'numeric', 'min:0', 'max:999999999999.99'],
         ];
     }
 }

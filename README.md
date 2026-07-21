@@ -28,6 +28,16 @@ persistente. Para ejecutar la tarea recurrente, crea opcionalmente un Cron Job c
 el mismo repositorio, schedule `0 11,23 * * *` (UTC) y Docker Command
 `php artisan amounts:cron`.
 
+## Recordatorios de ingresos por Gmail
+
+Configura `MAIL_HOST=smtp.gmail.com`, `MAIL_PORT=587`, `MAIL_ENCRYPTION=tls`,
+`MAIL_USERNAME` con la cuenta Gmail y `MAIL_PASSWORD` con una contraseña de
+aplicación de Google (no la contraseña normal). `MAIL_FROM_ADDRESS` debe ser la
+misma cuenta. Ejecuta el scheduler de Laravel cada minuto o crea un cron diario
+para `php artisan earnings:send-reminders`. Solo se envían recordatorios a
+usuarios con correo verificado y nunca se duplica un aviso para la misma fecha
+de claim.
+
 FINANCY es una aplicación para gestionar las finanzas personales de los usuarios. Permite a los usuarios registrar y gestionar sus ingresos, gastos, ahorros y listas de compras. La aplicación está construida utilizando una combinación de tecnologías modernas como React, Inertia.js, Laravel, Tailwind CSS y MySQL.
 
 ## Tecnologías Utilizadas

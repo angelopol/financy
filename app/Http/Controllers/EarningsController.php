@@ -2,168 +2,143 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Inertia\Inertia;
-use App\Models\Box;
 use App\Models\Earning;
 use App\Models\Movement;
-use App\Models\Saving;
+use App\Services\ExchangeRateService;
+use App\Services\FinanceAccountService;
+use App\Services\RecurringClaimService;
+use App\Services\RecurringSchedule;
 use App\Support\ProjectFinanceContext;
-use Carbon\Carbon;
-use Exception;
+use App\Support\SlugNormalizer;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class EarningsController extends Controller
 {
-    public static function GetRates(){
-        try {
-            $response = Http::get('https://ve.dolarapi.com/v1/dolares');
-        } catch (Exception $e) {
-            return ['parallel' => 1, 'bcv' => 1];
-        }
-
-        return ['parallel' => $response->json()[1]['promedio'], 'bcv' => $response->json()[0]['promedio']];
-    }
-
-    public static function ConvertAmount($currency, $amount, $parallel, $bcv){
-        if($currency == '$bcv'){
-            $amount = ($amount * $bcv) / $parallel;
-        } elseif ($currency == 'bs') {
-            $amount = $amount / $parallel;
-        }
-        return $amount;
-    }
-    /**
-     * Display a listing of the resource.
-     */
-    public function index(Request $request, ProjectFinanceContext $projectFinance)
+    public static function GetRates(): array
     {
-        $baseQuery = $projectFinance->apply(Earning::query(), $request);
+        return app(ExchangeRateService::class)->get();
+    }
+
+    public static function ConvertAmount($currency, $amount, $parallel, $bcv, $euro = null): float
+    {
+        return app(ExchangeRateService::class)->toDollars((string) $currency, (float) $amount, [
+            'parallel' => $parallel,
+            'bcv' => $bcv,
+            'euro' => $euro ?? $bcv,
+        ]);
+    }
+
+    public function index(Request $request, ProjectFinanceContext $context, ExchangeRateService $rates, RecurringSchedule $schedule)
+    {
+        $base = $context->apply(Earning::query(), $request);
+        $this->search($base, $request->string('q')->toString());
+        $recurring = (clone $base)->where(function ($query) {
+            $query->whereNotNull('term')->orWhereNotNull('claim_day');
+        });
+        $oneTime = (clone $base)->whereNull('term')->whereNull('claim_day');
+        $rateValues = $rates->get();
+        $totalEvery15Days = 0;
+        $totalMonthly = 0;
+        foreach ((clone $recurring)->get() as $earning) {
+            $amount = $rates->toDollars($earning->currency, (float) $earning->amount, $rateValues);
+            $totalEvery15Days += $amount;
+            $totalMonthly += $amount * $schedule->monthlyMultiplier($earning);
+        }
 
         return Inertia::render('Earnings/Earnings', [
             'auth' => auth()->user(),
-            'projectId' => $projectFinance->id($request),
-            'RecurringEarnings' => (clone $baseQuery)->where('term', '!=', null)->latest()->paginate(5),
-            'OneTimeEarnings' => (clone $baseQuery)->where('term', null)->latest()->paginate(3),
-            'rates' => self::GetRates()
+            'projectId' => $context->id($request),
+            'RecurringEarnings' => $recurring->latest()->paginate(5, ['*'], 'recurring_page')->withQueryString(),
+            'OneTimeEarnings' => $oneTime->latest()->paginate(5, ['*'], 'history_page')->withQueryString(),
+            'rates' => $rateValues,
+            'filters' => ['q' => $request->string('q')->toString()],
+            'recurringTotals' => [
+                'every15Days' => round($totalEvery15Days, 2),
+                'monthly' => round($totalMonthly, 2),
+            ],
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request, ProjectFinanceContext $projectFinance)
+    public function store(Request $request, ProjectFinanceContext $context, ExchangeRateService $rates, FinanceAccountService $accounts)
     {
+        $request->merge(['recurrence_type' => $request->input('recurrence_type', $request->filled('term') ? 'days' : 'one_time')]);
         $validated = $request->validate([
-            'amount' => 'required|numeric',
+            'amount' => 'required|numeric|min:0',
             'description' => 'required|string|max:500',
-            'currency' => 'required|string|in:$,bs,$bcv,$parallel',
-            'provider' => 'required|string|in:box,savings',
-            'term' => 'nullable|numeric|min:1',
-            'nextterm' => 'nullable|numeric',
+            'slug' => 'nullable|array|max:30',
+            'slug.*' => 'string|max:60',
+            'currency' => 'required|string|in:$,bs,$bcv,$parallel,€',
+            'provider' => 'required|string|in:box,savings,auto',
+            'recurrence_type' => 'required|in:one_time,days,monthly',
+            'term' => 'nullable|required_if:recurrence_type,days|integer|min:1',
+            'claim_day' => 'nullable|required_if:recurrence_type,monthly|integer|min:1|max:31',
+            'nextterm' => 'nullable|integer|min:0',
+            'auto_claim' => 'nullable|boolean',
             'project_id' => 'nullable|integer|min:1',
         ]);
 
-        $rates = self::GetRates();
-        $parallel = $rates['parallel'];
-        $bcv = $rates['bcv'];
-
         $validated['user'] = auth()->id();
-        $validated['project_id'] = $projectFinance->id($request);
-        
-        $amount = self::ConvertAmount($validated['currency'], $validated['amount'], $parallel, $bcv);
-        
+        $validated['project_id'] = $context->id($request);
+        $validated['slug'] = SlugNormalizer::normalize($validated['slug'] ?? null, $validated['description']);
+        $validated['auto_claim'] = $request->boolean('auto_claim', true);
+        $validated['provider'] = $validated['provider'] === 'auto'
+            ? $accounts->chooseProvider(auth()->id())
+            : $validated['provider'];
+        $isRecurring = $validated['recurrence_type'] !== 'one_time';
 
-        if(isset($validated['term'])){
+        if ($isRecurring) {
             $validated['UpdatedTerm'] = now();
+            $validated['term'] = $validated['recurrence_type'] === 'days' ? $validated['term'] : null;
+            $validated['claim_day'] = $validated['recurrence_type'] === 'monthly' ? $validated['claim_day'] : null;
+            $validated['NextClaim'] = $validated['recurrence_type'] === 'days'
+                ? ($validated['nextterm'] ?? $validated['term'])
+                : null;
         } else {
-            if($validated['currency'] != '$'){
-                if($validated['currency'] == '$parallel'){
-                    $amount = $amount / $parallel;
-                }
-                $validated['amount'] = $amount;
-                $validated['currency'] = '$';
-                $validated['OneTimeTase'] = $parallel;
-            }
-
+            $amount = $rates->toDollars($validated['currency'], (float) $validated['amount']);
             if ($validated['project_id'] === null) {
-                if($validated['provider'] == 'box'){
-                    $provider = Box::where('user', auth()->id())->first();
-                } else {
-                    $provider = Saving::where('user', auth()->id())->first();
-                }
-                $provider->amount += $amount;
-                $provider->save();
+                $validated['provider'] = $accounts->credit(auth()->id(), $validated['provider'], $amount);
             }
+            $validated['amount'] = $amount;
+            $validated['OneTimeTase'] = $validated['currency'] === '$' ? null : $rates->get()['parallel'];
+            $validated['currency'] = '$';
+            $validated['recurrence_type'] = 'one_time';
+            $validated['term'] = $validated['claim_day'] = $validated['NextClaim'] = null;
         }
+        unset($validated['nextterm']);
 
-        if(isset($validated['nextterm'])){
-            $validated['NextClaim'] = $validated['nextterm'];
-        } else {
-            $validated['NextClaim'] = $validated['term'];
-        }
+        $earning = Earning::create($validated);
+        $this->syncMovement($earning);
 
-        $earning = $request->user()->earnings()->create($validated);
-
-        Movement::create([
-            'user' => auth()->id(),
-            'project_id' => $earning->project_id,
-            'type' => 'earning',
-            'reference_id' => $earning->id,
-            'description' => $earning->description,
-            'amount' => $earning->amount,
-            'provider' => $earning->provider,
-        ]);
-
-        return back();
+        return back()->with('flash', ['type' => 'success', 'message' => 'Earning created.']);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Earning $earning)
     {
         $this->authorize('update', $earning);
-
         $validated = $request->validate([
-            'description' => 'nullable|string|max:500',
-            'amount' => 'nullable|numeric',
-            'currency' => 'nullable|string|in:$,bs,$bcv,$parallel',
-            'project_id' => 'nullable|integer|min:1'
+            'description' => 'sometimes|string|max:500',
+            'slug' => 'nullable|array|max:30',
+            'slug.*' => 'string|max:60',
+            'amount' => 'sometimes|numeric|min:0',
+            'currency' => 'sometimes|string|in:$,bs,$bcv,$parallel,€',
+            'auto_claim' => 'sometimes|boolean',
+            'project_id' => 'nullable|integer|min:1',
         ]);
-
-        foreach($validated as $key => $value){
-            if($value == null){
-                unset($validated[$key]);
-            }
+        if (array_key_exists('slug', $validated)) {
+            $validated['slug'] = SlugNormalizer::normalize($validated['slug'], $validated['description'] ?? $earning->description);
         }
-
         $earning->update($validated);
-        Movement::where('type', 'earning')->where('reference_id', $earning->id)->update([
-            'project_id' => $earning->project_id,
-            'description' => $earning->description,
-            'amount' => $earning->amount,
-            'provider' => $earning->provider,
-        ]);
+        $this->syncMovement($earning);
 
-        return back();
+        return back()->with('flash', ['type' => 'success', 'message' => 'Earning updated.']);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Earning $earning)
+    public function destroy(Earning $earning, FinanceAccountService $accounts)
     {
         $this->authorize('delete', $earning);
-
-        if($earning->term == null && $earning->project_id === null){
-            if($earning->provider == 'box'){
-                $provider = Box::where('user', auth()->id())->first();
-            } else {
-                $provider = Saving::where('user', auth()->id())->first();
-            }
-            $provider->amount -= $earning->amount;
-            $provider->save();
+        if ($earning->term === null && $earning->claim_day === null && $earning->project_id === null) {
+            $accounts->debit((int) $earning->user, $earning->provider, (float) $earning->amount);
         }
         Movement::where('type', 'earning')->where('reference_id', $earning->id)->delete();
         $earning->delete();
@@ -171,36 +146,34 @@ class EarningsController extends Controller
         return back();
     }
 
-    public function claim(Earning $earning){
+    public function claim(Earning $earning, RecurringClaimService $claims)
+    {
         $this->authorize('update', $earning);
+        abort_unless($earning->term !== null || $earning->claim_day !== null, 422, 'Only recurring earnings can be claimed.');
+        $claims->earning($earning);
 
-        $rates = EarningsController::GetRates();
-        $parallel = $rates['parallel'];
-        $bcv = $rates['bcv'];
+        return back()->with('flash', ['type' => 'success', 'message' => 'Earning claimed and added to history.']);
+    }
 
-        if ($earning->project_id !== null) {
-            return back();
+    private function search($query, string $search): void
+    {
+        $words = SlugNormalizer::words($search);
+        if ($search === '') {
+            return;
         }
+        $query->where(function ($query) use ($search, $words) {
+            $query->whereRaw('LOWER(description) LIKE ?', ['%'.mb_strtolower($search).'%']);
+            foreach ($words as $word) {
+                $query->orWhereRaw('LOWER(COALESCE(slug, \'\')) LIKE ?', ['%'.$word.'%']);
+            }
+        });
+    }
 
-        if ($earning->provider == 'box') {
-            $provider = Box::where('user', $earning->user)->first();
-        } else {
-            $provider = Saving::where('user', $earning->user)->first();
-        }
-        $amount = self::ConvertAmount($earning->currency, $earning->amount, $parallel, $bcv);
-        $provider->amount += $amount;
-        $provider->save();
-
-        $lastUpdated = Carbon::parse($earning->UpdatedTerm);
-        $now = Carbon::now();
-
-        $daysElapsed = $lastUpdated->diffInDays($now);
-
-        $earning->NextClaim = max(0, $earning->NextClaim - $daysElapsed) + $earning->term;
-
-        $earning->UpdatedTerm = $now;
-        $earning->save();
-
-        return back();
+    private function syncMovement(Earning $earning): void
+    {
+        Movement::updateOrCreate(
+            ['type' => 'earning', 'reference_id' => $earning->id],
+            ['user' => $earning->user, 'project_id' => $earning->project_id, 'description' => $earning->description, 'amount' => $earning->amount, 'provider' => $earning->provider]
+        );
     }
 }

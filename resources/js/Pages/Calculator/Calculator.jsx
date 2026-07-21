@@ -1,160 +1,43 @@
-
-
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import InputLabel from '@/components/InputLabel';
-import InputError from '@/components/InputError';
-import PrimaryButton from '@/components/PrimaryButton';
 import SelectInput from '@/components/SelectInput';
 import TextInput from '@/components/TextInput';
 
-
 export default function Calculator({ auth, rates }) {
-    const [bs, setBs] = useState('');
-    const [usd, setUsd] = useState('');
+    const [values, setValues] = useState({ bs: '', usd: '', eur: '' });
     const [rateType, setRateType] = useState('parallel');
-    const [error, setError] = useState('');
-    const [lastEdited, setLastEdited] = useState('bs'); // 'bs' o 'usd'
-
-    const getAverage = () => {
-        if (!rates) return 0;
-        const bcv = parseFloat(rates.bcv);
-        const parallel = parseFloat(rates.parallel);
-        if (isNaN(bcv) || isNaN(parallel)) return 0;
-        return ((bcv + parallel) / 2);
+    const [lastEdited, setLastEdited] = useState('bs');
+    const average = (a, b) => (Number(a) + Number(b)) / 2;
+    const selectedRates = (type = rateType) => ({
+        usd: type === 'bcv' ? Number(rates.bcv) : type === 'average' ? average(rates.bcv, rates.parallel) : Number(rates.parallel),
+        eur: type === 'bcv' ? Number(rates.euro) : type === 'average' ? average(rates.euro, rates.euro_parallel) : Number(rates.euro_parallel),
+    });
+    const convert = (source, raw, type = rateType) => {
+        if (raw === '' || Number.isNaN(Number(raw))) return { bs: source === 'bs' ? raw : '', usd: source === 'usd' ? raw : '', eur: source === 'eur' ? raw : '' };
+        const currentRates = selectedRates(type);
+        const bs = source === 'bs' ? Number(raw) : source === 'usd' ? Number(raw) * currentRates.usd : Number(raw) * currentRates.eur;
+        return { bs: bs.toFixed(2), usd: (bs / currentRates.usd).toFixed(2), eur: (bs / currentRates.eur).toFixed(2), [source]: raw };
     };
-
-    const getRate = () => {
-        if (!rates) return 0;
-        if (rateType === 'parallel') return rates.parallel;
-        if (rateType === 'bcv') return rates.bcv;
-        if (rateType === 'average') return getAverage();
-        return 0;
-    };
-
-    const handleBsChange = (e) => {
-        const value = e.target.value;
-        setBs(value);
-        setLastEdited('bs');
-        setError('');
-        const rate = parseFloat(getRate());
-        const bsValue = parseFloat(value);
-        if (isNaN(rate) || isNaN(bsValue) || rate === 0) {
-            setUsd('');
-            if (value !== '') setError('Por favor ingresa un monto válido y selecciona una tasa.');
-            return;
-        }
-        setUsd((bsValue / rate).toFixed(2));
-    };
-
-    const handleUsdChange = (e) => {
-        const value = e.target.value;
-        setUsd(value);
-        setLastEdited('usd');
-        setError('');
-        const rate = parseFloat(getRate());
-        const usdValue = parseFloat(value);
-        if (isNaN(rate) || isNaN(usdValue) || rate === 0) {
-            setBs('');
-            if (value !== '') setError('Por favor ingresa un monto válido y selecciona una tasa.');
-            return;
-        }
-        setBs((usdValue * rate).toFixed(2));
-    };
-
-    const handleRateChange = (e) => {
-        const newRateType = e.target.value;
-        setRateType(newRateType);
-        setError('');
-        let rate = 0;
-        if (newRateType === 'parallel') {
-            rate = parseFloat(rates.parallel);
-        } else if (newRateType === 'bcv') {
-            rate = parseFloat(rates.bcv);
-        } else if (newRateType === 'average') {
-            rate = getAverage();
-        }
-        if (!isNaN(rate) && rate !== 0) {
-            if (lastEdited === 'bs' && bs !== '' && !isNaN(parseFloat(bs))) {
-                setUsd((parseFloat(bs) / rate).toFixed(2));
-            } else if (lastEdited === 'usd' && usd !== '' && !isNaN(parseFloat(usd))) {
-                setBs((parseFloat(usd) * rate).toFixed(2));
-            }
-        }
-    };
+    const changed = (source, value) => { setLastEdited(source); setValues(convert(source, value)); };
+    const rateChanged = (type) => { setRateType(type); setValues(convert(lastEdited, values[lastEdited], type)); };
+    const display = (value) => Number(value || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
-        <AuthenticatedLayout user={auth} header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Calculator</h2>}>
+        <AuthenticatedLayout user={auth} header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200">Currency calculator</h2>}>
             <Head title="Calculator" />
-            <div className="py-12">
-                <div className="max-w-2xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6 mb-6">
-                        <form className="space-y-6" onSubmit={e => e.preventDefault()}>
-                            <div>
-                                <InputLabel htmlFor="rateType" value="Tasa" />
-                                <SelectInput
-                                    id="rateType"
-                                    value={rateType}
-                                    onChange={handleRateChange}
-                                    className="mt-1 block w-full"
-                                >
-                                    <option value="parallel">Paralelo</option>
-                                    <option value="bcv">BCV</option>
-                                    <option value="average">Promedio</option>
-                                </SelectInput>
-                            </div>
-                            <div>
-                                <InputLabel htmlFor="bs" value="Bolívares (Bs)" />
-                                <TextInput
-                                    id="bs"
-                                    type="number"
-                                    className="mt-1 block w-full"
-                                    value={bs}
-                                    onChange={handleBsChange}
-                                    placeholder="Introduce el monto en bolívares"
-                                    min="0"
-                                    step="any"
-                                />
-                            </div>
-                            <div>
-                                <InputLabel htmlFor="usd" value="Dólares ($)" />
-                                <TextInput
-                                    id="usd"
-                                    type="number"
-                                    className="mt-1 block w-full"
-                                    value={usd}
-                                    onChange={handleUsdChange}
-                                    placeholder="Introduce el monto en dólares"
-                                    min="0"
-                                    step="any"
-                                />
-                            </div>
-                            <InputError message={error} className="mt-2" />
-                        </form>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                            <div className="p-6 text-gray-900 dark:text-gray-100">
-                                <h3 className="text-lg font-semibold">Tasa BCV</h3>
-                                <p className="text-2xl mt-2">{rates?.bcv ? Number(rates.bcv).toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--'} Bs</p>
-                            </div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                            <div className="p-6 text-gray-900 dark:text-gray-100">
-                                <h3 className="text-lg font-semibold">Tasa Paralelo</h3>
-                                <p className="text-2xl mt-2">{rates?.parallel ? Number(rates.parallel).toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--'} Bs</p>
-                            </div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                            <div className="p-6 text-gray-900 dark:text-gray-100">
-                                <h3 className="text-lg font-semibold">Tasa Promedio</h3>
-                                <p className="text-2xl mt-2">{rates?.bcv && rates?.parallel ? getAverage().toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--'} Bs</p>
-                            </div>
-                        </div>
+            <div className="py-12"><div className="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
+                <div className="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6">
+                    <div className="space-y-5">
+                        <div><InputLabel htmlFor="rateType" value="Rate" /><SelectInput id="rateType" value={rateType} onChange={(e) => rateChanged(e.target.value)} className="mt-1 block w-full"><option value="parallel">Parallel</option><option value="bcv">Official / BCV</option><option value="average">Average</option></SelectInput></div>
+                        {[['bs', 'Bolívares (Bs)'], ['usd', 'Dollars ($)'], ['eur', 'Euros (€)']].map(([key, label]) => <div key={key}><InputLabel htmlFor={key} value={label} /><TextInput id={key} type="number" min="0" step="any" value={values[key]} onChange={(e) => changed(key, e.target.value)} className="mt-1 block w-full" /></div>)}
                     </div>
                 </div>
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[['Dollar BCV', rates.bcv], ['Dollar parallel', rates.parallel], ['Euro BCV', rates.euro], ['Euro parallel', rates.euro_parallel]].map(([label, value]) => <div key={label} className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-5 text-gray-900 dark:text-gray-100"><h3 className="font-semibold">{label}</h3><p className="text-xl mt-2">{display(value)} Bs</p></div>)}
+                </div>
+            </div></div>
         </AuthenticatedLayout>
     );
 }

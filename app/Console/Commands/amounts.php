@@ -2,120 +2,32 @@
 
 namespace App\Console\Commands;
 
-use App\Http\Controllers\EarningsController;
-use Illuminate\Console\Command;
 use App\Models\Earning;
 use App\Models\Expense;
-use App\Models\Box;
-use App\Models\Saving;
-use App\Http\Controllers\ExpensesController;
-use Carbon\Carbon;
+use App\Services\RecurringClaimService;
+use App\Services\RecurringSchedule;
+use Illuminate\Console\Command;
 
 class amounts extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'amounts:cron';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Sum or subtract amounts of recurring earnings and expenses in savings or box.';
+    protected $description = 'Claim due automatic recurring earnings and expenses.';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    public function handle(RecurringSchedule $schedule, RecurringClaimService $claims): int
     {
         $now = now();
+        $earnings = Earning::where('auto_claim', true)
+            ->where(fn ($q) => $q->whereNotNull('term')->orWhereNotNull('claim_day'))
+            ->get()->filter(fn ($item) => $schedule->dueAt($item)?->lessThanOrEqualTo($now));
+        $expenses = Expense::where('auto_claim', true)
+            ->where(fn ($q) => $q->whereNotNull('term')->orWhereNotNull('claim_day'))
+            ->get()->filter(fn ($item) => $schedule->dueAt($item)?->lessThanOrEqualTo($now));
 
-        $RecurringEarnings = Earning::whereNotNull('term')
-            ->whereNotNull('UpdatedTerm')
-            ->whereNotNull('NextClaim')
-            ->get()
-            ->filter(fn (Earning $earning) => $this->isRecurringClaimDue($earning->UpdatedTerm, $earning->NextClaim, $now));
+        $earnings->each(fn ($earning) => $claims->earning($earning));
+        $expenses->each(fn ($expense) => $claims->expense($expense));
+        $this->info("Claimed {$earnings->count()} earnings and {$expenses->count()} expenses.");
 
-        $RecurringExpenses = Expense::whereNotNull('term')
-            ->whereNotNull('UpdatedTerm')
-            ->whereNotNull('NextClaim')
-            ->get()
-            ->filter(fn (Expense $expense) => $this->isRecurringClaimDue($expense->UpdatedTerm, $expense->NextClaim, $now));
-        $rates = EarningsController::GetRates();
-        $parallel = $rates['parallel'];
-        $bcv = $rates['bcv'];
-        foreach ($RecurringEarnings as $earning) {
-            if ($earning->provider == 'box') {
-                $provider = Box::where('user', $earning->user)->first();
-            } else {
-                $provider = Saving::where('user', $earning->user)->first();
-            }
-            $amount = EarningsController::ConvertAmount($earning->currency, $earning->amount, $parallel, $bcv);
-            $provider->amount += $amount;
-            $provider->save();
-            $earning->NextClaim = $earning->term;
-            $earning->UpdatedTerm = now();
-            $earning->save();
-
-            // Create one-time Earning record to save movement history
-            $oneTime = [
-                'user' => $earning->user,
-                'recurring_id' => $earning->id,
-                'description' => $earning->description,
-                'amount' => $earning->amount,
-                'currency' => $earning->currency,
-                'provider' => $earning->provider,
-                'term' => null,
-                'NextClaim' => null,
-                'UpdatedTerm' => null,
-            ];
-            // For parity with store(), keep original currency and store conversion metadata if needed
-            if ($earning->currency != '$') {
-                // We keep amount in original currency for record, but also store OneTimeTase used at this moment
-                $oneTime['OneTimeTase'] = $parallel;
-            }
-            Earning::create($oneTime);
-        }
-    
-        foreach ($RecurringExpenses as $expense) {
-            if ($expense->provider == 'box') {
-                $provider = Box::where('user', $expense->user)->first();
-                $otherProvider = Saving::where('user', $expense->user)->first();
-            } else {
-                $provider = Saving::where('user', $expense->user)->first();
-                $otherProvider = Box::where('user', $expense->user)->first();
-            }
-            ExpensesController::SubtractProvider($provider, $otherProvider, $expense->amount);
-            $expense->NextClaim = $expense->term;
-            $expense->UpdatedTerm = now();
-            $expense->save();
-
-            // Create one-time Expense record to save movement history
-            Expense::create([
-                'user' => $expense->user,
-                'recurring_id' => $expense->id,
-                'description' => $expense->description,
-                'amount' => $expense->amount,
-                'provider' => $expense->provider,
-                'term' => null,
-                'NextClaim' => null,
-                'UpdatedTerm' => null,
-            ]);
-        }
-    }
-
-    private function isRecurringClaimDue($updatedTerm, $nextClaim, Carbon $now): bool
-    {
-        if ($updatedTerm === null || $nextClaim === null) {
-            return false;
-        }
-
-        return Carbon::parse($updatedTerm)
-            ->addDays((int) $nextClaim)
-            ->lessThanOrEqualTo($now);
+        return self::SUCCESS;
     }
 }

@@ -1,12 +1,13 @@
 <?php
 
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ExpensesController;
-use App\Http\Controllers\EarningsController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ShopListController;
+use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\CalculatorController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EarningsController;
+use App\Http\Controllers\ExpensesController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ShopListController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -71,6 +72,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/savings/transfer', [DashboardController::class, 'transferToSavings'])->name('savings.transfer');
     Route::get('/box', [DashboardController::class, 'ShowBox'])->name('box.show');
     Route::post('/box/transfer', [DashboardController::class, 'transfer'])->name('box.transfer');
+
+    Route::get('/budgets', [BudgetController::class, 'index'])->name('budgets.index');
+    Route::post('/budgets/categories', [BudgetController::class, 'store'])->name('budgets.categories.store');
+    Route::patch('/budgets/categories/{category}', [BudgetController::class, 'update'])->name('budgets.categories.update');
+    Route::delete('/budgets/categories/{category}', [BudgetController::class, 'destroy'])->name('budgets.categories.destroy');
 
     // Reports
     Route::get('/reports/earnings', [ReportController::class, 'earnings'])->name('reports.earnings');

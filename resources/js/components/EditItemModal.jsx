@@ -5,17 +5,19 @@ import InputError from '@/components/InputError';
 import PrimaryButton from '@/components/PrimaryButton';
 import SelectInput from '@/components/SelectInput';
 import { useForm } from '@inertiajs/react';
+import TagInput from '@/components/TagInput';
 
 export default function EditItemModal({ item, isOpen, onClose, Route, amount = null, parallelTase = null, projectId = null }) {
     let values = {
         description: item.description,
+        slug: item.slug ? item.slug.split(' ') : [],
         project_id: projectId,
     };
     if (amount) {
         values = {
             ...values,
             amount: item.amount,
-            currency: "$",
+            currency: item.currency || "$",
         };
     }
     const { data, setData, patch, processing, errors } = useForm(values);
@@ -43,6 +45,7 @@ export default function EditItemModal({ item, isOpen, onClose, Route, amount = n
                     />
                     <InputError message={errors.description} className="mt-2" />
                 </div>
+                {'slug' in item && <div><InputLabel htmlFor="edit-slug" value="Keywords" /><TagInput id={`edit-slug-${item.id}`} value={data.slug} onChange={(tags) => setData('slug', tags)} /><InputError message={errors.slug} className="mt-2" /></div>}
                 {amount && (
                     <>
                         <div>
@@ -67,6 +70,7 @@ export default function EditItemModal({ item, isOpen, onClose, Route, amount = n
                                 <option value="$">Dollar</option>
                                 <option value="bs">Bolivares</option>
                                 <option value="$bcv">Dollars in bolivares indexed in BCV</option>
+                                <option value="€">Euro</option>
                                 {parallelTase && (
                                     <option value="$parallel">Dollars in bolivares indexed in parallel tase</option>
                                 )}

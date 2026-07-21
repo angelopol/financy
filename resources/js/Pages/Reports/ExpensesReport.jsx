@@ -15,6 +15,8 @@ const currencyLabel = (c) => {
             return 'Dollars in bolivares indexed in BCV';
         case '$parallel':
             return 'Dollars in bolivares indexed in parallel tase';
+        case '€':
+            return 'Euro';
         default:
             return c;
     }
@@ -31,7 +33,7 @@ const providerLabel = (p) => {
     }
 };
 
-export default function ExpensesReport({ auth, items, itemsAll, from, to, provider, totalAmount }) {
+export default function ExpensesReport({ auth, items, itemsAll, from, to, provider, keywords, totalAmount }) {
     const printRef = useRef(null);
     const handlePrint = () => {
         const printContents = printRef.current ? printRef.current.innerHTML : '';
@@ -56,6 +58,7 @@ export default function ExpensesReport({ auth, items, itemsAll, from, to, provid
     if (from) query.set('from', from);
     if (to) query.set('to', to);
     if (provider && provider !== 'both') query.set('provider', provider);
+    if (keywords) query.set('q', keywords);
     const csvHref = route('reports.expenses.csv') + (query.toString() ? `?${query.toString()}` : '');
 
     return (
