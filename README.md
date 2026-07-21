@@ -1,5 +1,33 @@
 # FINANCY
 
+## Despliegue en Render con Docker
+
+El repositorio incluye un `Dockerfile` multi-stage y un Blueprint `render.yaml`.
+La imagen compila los assets de Vite, instala las dependencias PHP de produccion y
+sirve Laravel con Apache en el puerto indicado por Render.
+
+1. Sube el repositorio a GitHub, GitLab o Bitbucket.
+2. En Render, selecciona **New > Blueprint** y conecta el repositorio.
+3. Completa las variables marcadas como secretas:
+   - `APP_URL`: URL publica completa, por ejemplo `https://financy.onrender.com`.
+   - `DB_HOST`, `DB_PASSWORD`: credenciales PostgreSQL de Supabase.
+   - Si Supabase usa otros valores, ajusta tambien `DB_PORT`, `DB_DATABASE` y
+     `DB_USERNAME` en Render.
+4. Crea el servicio. El contenedor ejecutara `php artisan migrate --force` al
+   arrancar y Render comprobara `/up` antes de enviar trafico.
+
+`APP_KEY` se genera una sola vez desde el Blueprint. No la cambies despues de que
+la aplicacion tenga usuarios, porque invalidaria sesiones y datos cifrados. Los
+logs se envian a `stderr`, por lo que aparecen directamente en el panel de Render.
+En un servicio pago puedes mover la migracion a `preDeployCommand` y cambiar
+`RUN_MIGRATIONS` a `false`.
+
+El filesystem de Render es efimero. Actualmente FINANCY no guarda archivos de
+usuario, pero si agregas uploads debes configurar S3/Supabase Storage o un disco
+persistente. Para ejecutar la tarea recurrente, crea opcionalmente un Cron Job con
+el mismo repositorio, schedule `0 11,23 * * *` (UTC) y Docker Command
+`php artisan amounts:cron`.
+
 FINANCY es una aplicación para gestionar las finanzas personales de los usuarios. Permite a los usuarios registrar y gestionar sus ingresos, gastos, ahorros y listas de compras. La aplicación está construida utilizando una combinación de tecnologías modernas como React, Inertia.js, Laravel, Tailwind CSS y MySQL.
 
 ## Tecnologías Utilizadas

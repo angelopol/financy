@@ -22,6 +22,10 @@ use Inertia\Inertia;
 |
 */
 
+Route::get('/up', function () {
+    return response()->json(['status' => 'ok']);
+})->name('health');
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
