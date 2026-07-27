@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9667783e7384772b1b2c9f2f6c549784",
+    "content-hash": "31a5e87387e2cfb674a53d933ee27fc0",
     "packages": [
         {
             "name": "brick/math",
@@ -1053,6 +1053,41 @@
                 }
             ],
             "time": "2025-02-03T10:55:03+00:00"
+        },
+        {
+            "name": "idealo/financy-rates",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "packages/financy-rates",
+                "reference": "2cff6b438fcdab2479e763f1cf1c740a4806aba7"
+            },
+            "require": {
+                "illuminate/http": "^10.0|^11.0|^12.0",
+                "illuminate/support": "^10.0|^11.0|^12.0",
+                "php": "^8.1"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Idealo\\FinancyRates\\FinancyRatesServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Idealo\\FinancyRates\\": "src/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Live and historical Venezuelan exchange-rate conversion extracted from FINANCY.",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         },
         {
             "name": "inertiajs/inertia-laravel",
@@ -8394,12 +8429,14 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "idealo/financy-rates": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.1"
     },
-    "platform-dev": [],
-    "plugin-api-version": "2.3.0"
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
 }

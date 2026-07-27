@@ -1,0 +1,26 @@
+name: Publish financy-rates branch
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - packages/financy-rates/**
+      - .github/workflows/publish-financy-rates.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Publish package subtree
+        shell: bash
+        run: |
+          git subtree split --prefix=packages/financy-rates -b financy-rates
+          git push origin financy-rates --force

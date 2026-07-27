@@ -13,7 +13,7 @@ use App\Notifications\RecurringEarningReminder;
 use App\Services\RecurringSchedule;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -25,7 +25,16 @@ class FinanceFeaturesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Cache::put('financy.exchange-rates', ['parallel' => 40, 'bcv' => 36, 'euro' => 44, 'euro_parallel' => 48]);
+        Http::fake([
+            'https://ve.dolarapi.com/v1/dolares' => Http::response([
+                ['nombre' => 'Oficial', 'promedio' => 36],
+                ['nombre' => 'Paralelo', 'promedio' => 40],
+            ]),
+            'https://ve.dolarapi.com/v1/euros' => Http::response([
+                ['nombre' => 'Oficial', 'promedio' => 44],
+                ['nombre' => 'Paralelo', 'promedio' => 48],
+            ]),
+        ]);
     }
 
     public function test_manual_claim_creates_history_movement_and_updates_balance(): void

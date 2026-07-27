@@ -1,0 +1,23 @@
+{
+  "name": "idealo/financy-rates",
+  "description": "Live and historical Venezuelan exchange-rate conversion extracted from FINANCY.",
+  "type": "library",
+  "license": "proprietary",
+  "autoload": {
+    "psr-4": {
+      "Idealo\\FinancyRates\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Idealo\\FinancyRates\\FinancyRatesServiceProvider"
+      ]
+    }
+  },
+  "require": {
+    "php": "^8.1",
+    "illuminate/http": "^10.0|^11.0|^12.0",
+    "illuminate/support": "^10.0|^11.0|^12.0"
+  }
+}
