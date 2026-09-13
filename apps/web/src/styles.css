@@ -1149,6 +1149,9 @@ footer span:first-child {
 .filters-toggle {
   display: none;
 }
+.search-field-mobile {
+  display: none;
+}
 .row-actions {
   display: flex;
   align-items: center;
@@ -2186,15 +2189,11 @@ dialog::backdrop {
   }
   .list-toolbar {
     padding: 17px;
-    flex-wrap: wrap;
   }
-  .search-field {
-    order: 1;
-    flex: 1 1 auto;
-    min-width: 0;
+  .search-field-desktop {
+    display: none;
   }
   .filters-toggle {
-    order: 2;
     flex: 0 0 auto;
     display: flex;
     align-items: center;
@@ -2208,7 +2207,7 @@ dialog::backdrop {
     transition: transform 0.15s ease;
   }
   .filters-toggle.open {
-    transform: rotate(90deg);
+    transform: rotate(180deg);
   }
   .filters {
     display: none;
@@ -2217,6 +2216,10 @@ dialog::backdrop {
   }
   .filters.filters-open {
     display: flex;
+  }
+  .search-field-mobile {
+    display: flex;
+    width: 100%;
   }
   .tabs button {
     font-size: 10px;

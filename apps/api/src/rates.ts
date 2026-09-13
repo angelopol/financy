@@ -88,9 +88,20 @@ export class RatesService {
     let factor: Decimal;
     switch (currency) {
       case 'bs':
+      case '$parallel':
+        // '$parallel' is a retired code kept only so old recurring entries
+        // still convert; new entries can no longer be saved with it.
         // Bolívares always convert through the parallel rate: everything
         // ultimately lands in USD at the parallel rate, never the official one.
         factor = new Decimal(1).div(required('parallel'));
+        break;
+      case 'VES_BCV':
+        // Retired code kept only for old entries, see '$parallel' above.
+        factor = new Decimal(1).div(required('bcv'));
+        break;
+      case 'EUR':
+        // Retired code kept only for old entries, see '$parallel' above.
+        factor = required('euro').div(required('bcv'));
         break;
       case '$bcv':
         // An amount priced at the official USD rate, re-based to its

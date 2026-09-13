@@ -8,6 +8,7 @@ import {
   Bell,
   CalendarDays,
   ChartNoAxesCombined,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CircleHelp,
@@ -612,7 +613,7 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                         ))
                       )}
                     </div>
-                    <div className="search-field">
+                    <div className="search-field search-field-desktop">
                       <Search size={17} />
                       <input
                         aria-label="Buscar movimientos"
@@ -628,10 +629,19 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                       aria-label={filtersOpen ? 'Ocultar filtros' : 'Mostrar filtros'}
                       onClick={() => setFiltersOpen((v) => !v)}
                     >
-                      <ChevronRight size={18} />
+                      <ChevronDown size={18} />
                     </button>
                   </div>
                   <div className={'filters' + (filtersOpen ? ' filters-open' : '')}>
+                    <div className="search-field search-field-mobile">
+                      <Search size={17} />
+                      <input
+                        aria-label="Buscar movimientos"
+                        placeholder="Buscar un movimiento…"
+                        value={q}
+                        onChange={(e) => setQ(e.target.value)}
+                      />
+                    </div>
                     <SlidersHorizontal size={15} />
                     <select
                       aria-label="Filtrar cuenta"

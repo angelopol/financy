@@ -444,12 +444,14 @@ test('currency conversions preserve legacy formulas and fail closed', async () =
   assert.equal(await rates.convert('$bcv', '100'), '90.00');
   assert.equal(await rates.convert('€', '100'), '110.00');
   assert.equal(await rates.convert('EUR_PARALLEL', '36'), '43.20');
-  // '$parallel' (duplicated 'bs'), 'VES_BCV' and 'EUR' (both broke the "always
-  // ends up USD at the parallel rate" rule) were removed rather than merely
-  // hidden from the UI, so no code path can still reach their old formulas.
-  await assert.rejects(rates.convert('$parallel', '10'));
-  await assert.rejects(rates.convert('VES_BCV', '10'));
-  await assert.rejects(rates.convert('EUR', '10'));
+  // '$parallel' (duplicated 'bs'), 'VES_BCV' and 'EUR' (which broke the "always
+  // ends up USD at the parallel rate" rule) were dropped from the currency
+  // picker, but old recurring entries already saved with those codes still
+  // need to convert on every dashboard/projection read, so their original
+  // formulas stay supported even though nothing can write them anymore.
+  assert.equal(await rates.convert('$parallel', '400'), '10.00');
+  assert.equal(await rates.convert('VES_BCV', '360'), '10.00');
+  assert.equal(await rates.convert('EUR', '36'), '44.00');
   const broken = new RatesService();
   broken.get = async () => ({}) as any;
   await assert.rejects(broken.convert('bs', '5'));
