@@ -326,6 +326,23 @@ export class FinanceService {
       return history;
     });
   }
+  // Re-anchors an overdue recurring entry to today without booking a
+  // transaction: a manual fix for items left stuck by a cron outage, distinct
+  // from claim() which both books the money and advances the schedule.
+  async resync(user: string, table: 'earnings' | 'expenses', id: string) {
+    return this.db.transaction(async (sql) => {
+      const item = await this.owned(sql, table, id, user);
+      if (!recurring(item)) throw new ConflictException('Este movimiento no es recurrente.');
+      const due = dueAt(item);
+      if (due && due > now()) throw new ConflictException('Este movimiento no está atrasado.');
+      const previousAnchor = String(item.UpdatedTerm);
+      await sql.query(
+        `UPDATE ${table} SET "UpdatedTerm"=$1,"NextClaim"=term,updated_at=now() WHERE id=$2`,
+        [now().toFormat('yyyy-MM-dd HH:mm:ss'), id],
+      );
+      return { ok: true, previous_anchor: previousAnchor };
+    });
+  }
   async list(user: string, table: 'earnings' | 'expenses', query: any, report = false) {
     const v = parse(
       z.object({

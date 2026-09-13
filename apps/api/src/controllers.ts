@@ -88,6 +88,21 @@ export class FinanceController {
     const v = parse(z.object({ expected_anchor: z.string().max(100).optional() }), body);
     return this.f.claim(r.user.id, kind(k), parse(idSchema, id), v.expected_anchor);
   }
+  @Post('entries/:kind/:id/resync') async resync(
+    @Req() r: AuthRequest,
+    @Param('kind') k: string,
+    @Param('id') id: string,
+  ) {
+    const result = await this.f.resync(r.user.id, kind(k), parse(idSchema, id));
+    await this.activity.log(
+      r.user.id,
+      'user',
+      'schedule_resynced',
+      id,
+      `Fecha de recurrencia actualizada a hoy${k === 'earnings' ? ' (ingreso)' : ' (gasto)'}`,
+    );
+    return result;
+  }
   @Get('reports/:kind') report(@Req() r: AuthRequest, @Param('kind') k: string, @Query() q: any) {
     return this.f.list(r.user.id, kind(k), q, true);
   }

@@ -267,6 +267,7 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
           expected_anchor: e.UpdatedTerm,
         })
       }
+      onResync={(e) => action('/entries/' + type + '/' + e.id + '/resync', 'POST', {})}
       onSplit={type === 'expenses' ? split : undefined}
     />
   );

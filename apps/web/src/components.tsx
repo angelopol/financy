@@ -8,6 +8,7 @@ import {
   Pencil,
   Trash2,
   Repeat2,
+  RefreshCw,
   Split,
 } from 'lucide-react';
 import { accountLabel, dateLabel, usd } from './api';
@@ -84,12 +85,14 @@ export function EntryRows({
   onDelete,
   onClaim,
   onSplit,
+  onResync,
 }: {
   items: any[];
   onEdit?: (e: any) => void;
   onDelete?: (e: any) => void;
   onClaim?: (e: any) => void;
   onSplit?: (e: any) => void;
+  onResync?: (e: any) => void;
 }) {
   if (!items.length) return <Empty />;
   return (
@@ -111,6 +114,7 @@ export function EntryRows({
         <tbody>
           {items.map((e) => {
             const income = e.type === 'earning' || e.type === 'earnings';
+            const stuck = e.due_at && (e.term != null || e.claim_day != null) && new Date(e.due_at) < new Date();
             return (
               <tr key={`${e.type}-${e.id}`}>
                 <td>
@@ -147,6 +151,16 @@ export function EntryRows({
                       {e.due_at && onClaim && (
                         <button className="small-button" onClick={() => onClaim(e)}>
                           {income ? 'Cobrar' : 'Pagar'}
+                        </button>
+                      )}
+                      {stuck && onResync && (
+                        <button
+                          className="icon-button"
+                          aria-label={'Actualizar fecha de ' + e.description}
+                          title="Esta recurrencia quedó atrasada. Actualiza su fecha a hoy sin registrar un movimiento."
+                          onClick={() => onResync(e)}
+                        >
+                          <RefreshCw size={15} />
                         </button>
                       )}
                       <button

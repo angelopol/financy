@@ -147,6 +147,24 @@ test('manual early claim requires the displayed anchor and cannot repeat its per
   await assert.rejects(f.claim(u, 'earnings', e.id, e.UpdatedTerm));
   assert.equal((await f.balances(db, u)).box, '20.00');
 });
+test('resync re-anchors an overdue recurrence to today without booking money', async () => {
+  const u = await user();
+  const e = await f.save(u, 'earnings', entry('20', { recurrence_type: 'days', term: 15 }));
+  await assert.rejects(f.resync(u, 'earnings', e.id)); // not due yet, nothing to fix
+  await db.query('UPDATE earnings SET "UpdatedTerm"=$1 WHERE id=$2', [
+    now().minus({ days: 40 }).toFormat('yyyy-MM-dd HH:mm:ss'),
+    e.id,
+  ]);
+  const before = await f.balances(db, u);
+  const result = await f.resync(u, 'earnings', e.id);
+  assert.equal(result.ok, true);
+  assert.deepEqual(await f.balances(db, u), before);
+  assert.equal((await f.list(u, 'earnings', { mode: 'history' })).total, 0);
+  const refreshed = (await f.list(u, 'earnings', {})).items[0];
+  assert.ok(dueAt(refreshed)! > now());
+  const oneOff = await f.save(u, 'earnings', entry('5'));
+  await assert.rejects(f.resync(u, 'earnings', oneOff.id));
+});
 test('monthly projection preserves the legacy cycle multiplier and converts foreign income', async () => {
   const u = await user();
   await f.save(u, 'earnings', entry('400', { currency: 'bs', recurrence_type: 'days', term: 15 }));
