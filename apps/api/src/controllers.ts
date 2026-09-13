@@ -113,8 +113,8 @@ export class FinanceController {
   @Post('accounts/transfer') transfer(@Req() r: AuthRequest, @Body() b: unknown) {
     return this.p.transfer(r.user.id, b);
   }
-  @Get('shopping') shopping(@Req() r: AuthRequest) {
-    return this.p.shopList(r.user.id);
+  @Get('shopping') shopping(@Req() r: AuthRequest, @Query() q: any) {
+    return this.p.shopList(r.user.id, q);
   }
   @Post('shopping') shopCreate(@Req() r: AuthRequest, @Body() b: unknown) {
     return this.p.shopSave(r.user.id, b);

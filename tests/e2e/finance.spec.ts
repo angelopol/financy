@@ -17,7 +17,7 @@ test('desktop and mobile financial flows', async ({ page }) => {
         headers: { 'Content-Type': 'application/json' },
         body: body ? JSON.stringify(body) : undefined,
       });
-    for (const e of await (await send('/shopping')).json())
+    for (const e of (await (await send('/shopping')).json()).items)
       if (e.description.endsWith('UX')) {
         await send('/shopping/' + e.id + '/pending', 'POST', {});
         await send('/shopping/' + e.id, 'DELETE', {});

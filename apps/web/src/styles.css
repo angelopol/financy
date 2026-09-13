@@ -2453,6 +2453,19 @@ nav,
 [data-theme='dark'] .form input::placeholder {
   color: #63755b;
 }
+[data-theme='dark'] .shopping-row > .entry-icon {
+  background: #1f3527;
+  color: #bfe0a5;
+}
+[data-theme='dark'] .shopping-row.purchased {
+  background: #14231b;
+}
+[data-theme='dark'] .shopping-row.purchased .shopping-description strong {
+  color: #6f8266;
+}
+[data-theme='dark'] .shopping-description small {
+  color: #93a58c;
+}
 [data-theme='dark'] .error {
   background: #2c1f1a;
   border-color: #4a3128;

@@ -163,7 +163,7 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
         : page === 'earnings' || page === 'expenses'
           ? '/entries/' + page + '?' + query
           : page === 'shopping'
-            ? '/shopping'
+            ? '/shopping?page=' + number
             : page === 'budgets'
               ? '/budgets?month=' + month
               : page === 'reports'
@@ -270,13 +270,6 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
           </span>
           financy<span className="brand-dot">.</span>
         </Link>
-        <div className="workspace-label">
-          <span className="workspace-avatar">P</span>
-          <div>
-            Espacio personal<small>Tus finanzas, en calma</small>
-          </div>
-          <span className="online-dot" />
-        </div>
         <span className="nav-label">TU ESPACIO</span>
         <nav>
           {navigation.map(([url, label, Icon]) => (
@@ -288,21 +281,13 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-tip">
-            <Sprout size={23} />
-            <strong>El futuro empieza hoy.</strong>
-            <p>Cada pequeño ahorro te acerca a algo grande.</p>
-            <Link to="/accounts">
-              Cuida tus ahorros <ArrowUpRight size={14} />
-            </Link>
-          </div>
           <NavLink className="settings-link" to="/profile">
             <Settings2 size={18} /> Configuración
           </NavLink>
           <button className="user-card" onClick={() => navigate('/profile')}>
-            <span className="avatar">{user.name.slice(0, 2).toUpperCase()}</span>
+            <span className="avatar">{(user.name || '?').slice(0, 2).toUpperCase()}</span>
             <span>
-              <strong>{user.name}</strong>
+              <strong>{user.name || 'Sin nombre'}</strong>
               <small>Mi cuenta personal</small>
             </span>
             <ChevronRight size={16} />
@@ -345,7 +330,7 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
             <div>
               <span className="eyebrow">
                 {page === 'dashboard'
-                  ? `HOLA, ${user.name.split(' ')[0].toUpperCase()} ☀`
+                  ? `HOLA, ${(user.name || '').split(' ')[0].toUpperCase()} ☀`
                   : 'TUS FINANZAS, A TU RITMO'}
               </span>
               <h1>{title[0]}</h1>
@@ -860,21 +845,13 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                   <div className="panel-head">
                     <div>
                       <h2>De tus planes a tu día a día</h2>
-                      <p>
-                        {data.filter((e: any) => e.status === 'pending').length} compras pendientes
-                      </p>
+                      <p>{data.pending_count} compras pendientes</p>
                     </div>
-                    <strong>
-                      {usd(
-                        data
-                          .filter((e: any) => e.status === 'pending')
-                          .reduce((s: number, e: any) => s + Number(e.amount), 0),
-                      )}
-                    </strong>
+                    <strong>{usd(data.pending_amount)}</strong>
                   </div>
-                  {data.length ? (
+                  {data.items.length ? (
                     <div className="shopping-list">
-                      {data.map((e: any) => (
+                      {data.items.map((e: any) => (
                         <div
                           className={
                             'shopping-row ' + (e.status === 'purchased' ? 'purchased' : '')
@@ -975,6 +952,31 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                       title="¿Qué tienes en mente?"
                       description="Organiza tus próximas compras y registra el gasto cuando las hagas."
                     />
+                  )}
+                  {data.pages > 1 && (
+                    <div className="pagination">
+                      <span>
+                        {data.total} compras · Página {number} de {Math.max(1, data.pages)}
+                      </span>
+                      <div>
+                        <button
+                          className="icon-button"
+                          aria-label="Página anterior"
+                          disabled={number <= 1}
+                          onClick={() => setNumber((n) => n - 1)}
+                        >
+                          <ChevronLeft size={17} />
+                        </button>
+                        <button
+                          className="icon-button"
+                          aria-label="Página siguiente"
+                          disabled={number >= data.pages}
+                          onClick={() => setNumber((n) => n + 1)}
+                        >
+                          <ChevronRight size={17} />
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </section>
               )}

@@ -32,13 +32,31 @@ const budgetSchema = z.object({
 @Injectable()
 export class PlanningService {
   constructor(@Inject(FinanceService) readonly finance: FinanceService) {}
-  async shopList(user: string) {
-    return (
+  async shopList(user: string, query: any) {
+    const v = parse(z.object({ page: z.coerce.number().int().min(1).max(100000).default(1) }), query);
+    const total = (
+      await this.finance.db.query('SELECT count(*) AS count FROM shop_list_items WHERE "user"=$1', [
+        user,
+      ])
+    ).rows[0];
+    const pending = (
       await this.finance.db.query(
-        'SELECT * FROM shop_list_items WHERE "user"=$1 ORDER BY status,created_at DESC',
+        `SELECT count(*) AS count,COALESCE(sum(amount),0) AS amount FROM shop_list_items WHERE "user"=$1 AND status='pending'`,
         [user],
       )
-    ).rows;
+    ).rows[0];
+    const result = await this.finance.db.query(
+      'SELECT * FROM shop_list_items WHERE "user"=$1 ORDER BY status,created_at DESC LIMIT 20 OFFSET $2',
+      [user, (v.page - 1) * 20],
+    );
+    return {
+      items: result.rows,
+      total: Number(total.count),
+      pending_count: Number(pending.count),
+      pending_amount: pending.amount,
+      page: v.page,
+      pages: Math.ceil(Number(total.count) / 20),
+    };
   }
   async shopSave(user: string, body: unknown, id?: string) {
     const v = parse(shoppingSchema, body);

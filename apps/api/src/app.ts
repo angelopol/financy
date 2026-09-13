@@ -48,7 +48,8 @@ class Errors implements ExceptionFilter {
           : error.code === '23503'
             ? 'La referencia seleccionada no existe'
             : 'No pudimos completar la operación. Revisa la conexión y vuelve a intentarlo.';
-    if (status === 503) console.error('Request failed:', error.code ?? error.constructor.name);
+    if (status === 503)
+      console.error('Request failed:', error.code ?? error.constructor.name, error.message);
     res.status(status).json({ message, statusCode: status });
   }
 }
