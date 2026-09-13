@@ -447,6 +447,8 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                       icon={<PiggyBank size={20} />}
                       positive
                       note="La diferencia entre ingresos y gastos"
+                      upcoming={data.projected}
+                      upcomingLabel="neto por recurrencias pendientes"
                     />
                   </div>
                   <div className="dashboard-middle">
@@ -1077,6 +1079,7 @@ function Metric({
   note,
   positive = false,
   upcoming,
+  upcomingLabel = 'próximos',
 }: {
   title: string;
   value: string;
@@ -1084,7 +1087,9 @@ function Metric({
   note: string;
   positive?: boolean;
   upcoming?: string | null;
+  upcomingLabel?: string;
 }) {
+  const upcomingValue = upcoming == null ? null : Number(upcoming);
   return (
     <section className="metric-card">
       <div className="card-label">
@@ -1092,9 +1097,9 @@ function Metric({
         <span className={positive ? 'positive-bg' : 'expense-bg'}>{icon}</span>
       </div>
       <h2>{usd(value)}</h2>
-      {upcoming != null && Number(upcoming) > 0 && (
-        <small className={'metric-upcoming ' + (positive ? 'positive' : 'danger')}>
-          {positive ? '+' : '−'} {usd(upcoming)} próximos
+      {upcomingValue != null && upcomingValue !== 0 && (
+        <small className={'metric-upcoming ' + (upcomingValue >= 0 ? 'positive' : 'danger')}>
+          {upcomingValue >= 0 ? '+' : '−'} {usd(Math.abs(upcomingValue))} {upcomingLabel}
         </small>
       )}
       <p>{note}</p>
