@@ -5,13 +5,19 @@ import { z } from 'zod';
 export const zone = 'America/Caracas';
 export const now = () => DateTime.now().setZone(zone);
 export const money = (value: Decimal.Value) => new Decimal(value).toDecimalPlaces(2).toFixed(2);
+// Matches the legacy Laravel app's SlugNormalizer: words under 3 characters
+// (mostly Spanish articles/prepositions like "la", "el", "de", "un") are
+// dropped so they can't cause unrelated budget categories or expenses to
+// falsely share a keyword.
 export const words = (s: string) => [
   ...new Set(
-    s
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .match(/[\p{L}\p{N}]+/gu) ?? [],
+    (
+      s
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .match(/[\p{L}\p{N}]+/gu) ?? []
+    ).filter((w) => w.length >= 3),
   ),
 ];
 export const recurring = (r: any) => r.term != null || r.claim_day != null;
@@ -39,17 +45,12 @@ export const amountSchema = z
     'Introduce un importe positivo con hasta 2 decimales',
   );
 export const providerSchema = z.enum(['box', 'savings', 'auto']);
-export const currencySchema = z.enum([
-  '$',
-  'bs',
-  '$bcv',
-  '$parallel',
-  '€',
-  'USD',
-  'VES_BCV',
-  'EUR',
-  'EUR_PARALLEL',
-]);
+// `$parallel` (Bs->USD at the parallel rate) duplicated `bs` exactly; `VES_BCV`
+// (Bs->USD at the official rate) and `EUR` (EUR->USD at the official rate)
+// broke the rule that everything ultimately lands in USD at the parallel
+// rate. Removed rather than just hidden from the UI, so no path can produce
+// an inconsistent conversion. `USD` stays only as a legacy alias for `$`.
+export const currencySchema = z.enum(['$', 'bs', '$bcv', '€', 'USD', 'EUR_PARALLEL']);
 export const entrySchema = z
   .object({
     description: z.string().trim().min(1).max(500),

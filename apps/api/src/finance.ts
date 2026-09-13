@@ -11,6 +11,11 @@ import { Database, Sql } from './database';
 import { dueAt, entrySchema, kind, money, now, parse, recurring, words } from './domain';
 import { RatesService } from './rates';
 export type Entry = z.infer<typeof entrySchema>;
+// Auto-picks the account to move money to/from: income goes to whichever
+// account already has the higher balance, expenses come out of whichever
+// has the lower balance.
+const pickAuto = (balances: { box: string; savings: string }, credit: boolean) =>
+  credit === new Decimal(balances.box).gte(balances.savings) ? 'box' : 'savings';
 @Injectable()
 export class FinanceService {
   constructor(
@@ -37,8 +42,7 @@ export class FinanceService {
   async apply(sql: Sql, user: string, amount: string, provider: string, credit: boolean) {
     const balances = await this.balances(sql, user);
     const a = new Decimal(amount);
-    if (provider === 'auto')
-      provider = new Decimal(balances.box).gte(balances.savings) ? 'box' : 'savings';
+    if (provider === 'auto') provider = pickAuto(balances, credit);
     const p = provider as 'box' | 'savings';
     const other = p === 'box' ? 'savings' : 'box';
     const allocation = { box: '0.00', savings: '0.00' };
@@ -77,7 +81,7 @@ export class FinanceService {
     if (
       table === 'expenses' ||
       !repeat ||
-      !['$', 'bs', '$bcv', '$parallel', '€'].includes(currency)
+      !['$', 'bs', '$bcv', '€', 'EUR_PARALLEL'].includes(currency)
     ) {
       amount = await this.rates.convert(currency, amount);
       currency = '$';
@@ -90,7 +94,7 @@ export class FinanceService {
       allocation = result.allocation;
     } else if (provider === 'auto') {
       const b = await this.balances(sql, user);
-      provider = new Decimal(b.box).gte(b.savings) ? 'box' : 'savings';
+      provider = pickAuto(b, table === 'earnings');
     }
     const columns = [
       'user',
@@ -223,7 +227,7 @@ export class FinanceService {
       if (
         table === 'expenses' ||
         !recurring(old) ||
-        !['$', 'bs', '$bcv', '$parallel', '€'].includes(currency)
+        !['$', 'bs', '$bcv', '€', 'EUR_PARALLEL'].includes(currency)
       ) {
         amount = await this.rates.convert(currency, amount);
         currency = '$';
@@ -383,9 +387,9 @@ export class FinanceService {
         [user],
       );
       const upcoming: any[] = [];
-      let projected = new Decimal(0);
+      const projectedByType = { earnings: new Decimal(0), expenses: new Decimal(0) };
       let projectionAvailable = true;
-      for (const t of ['earnings', 'expenses']) {
+      for (const t of ['earnings', 'expenses'] as const) {
         const rows = await sql.query(
           `SELECT * FROM ${t} WHERE "user"=$1 AND project_id IS NULL AND (term IS NOT NULL OR claim_day IS NOT NULL)`,
           [user],
@@ -396,16 +400,15 @@ export class FinanceService {
           try {
             const amount =
               t === 'earnings' ? await this.rates.convert(r.currency, String(r.amount)) : r.amount;
-            projected = projected.plus(
-              new Decimal(amount)
-                .mul(r.claim_day ? 1 : r.term <= 22 ? 2 : 1)
-                .mul(t === 'earnings' ? 1 : -1),
+            projectedByType[t] = projectedByType[t].plus(
+              new Decimal(amount).mul(r.claim_day ? 1 : r.term <= 22 ? 2 : 1),
             );
           } catch {
             projectionAvailable = false;
           }
         }
       }
+      const projected = projectedByType.earnings.minus(projectedByType.expenses);
       const trend = await sql.query(
         `SELECT to_char(created_at,'YYYY-MM-DD') AS day, sum(amount) AS amount,type FROM (SELECT created_at,amount,'earning' AS type FROM earnings WHERE "user"=$1 AND project_id IS NULL AND term IS NULL AND claim_day IS NULL UNION ALL SELECT created_at,amount,'expense' AS type FROM expenses WHERE "user"=$1 AND project_id IS NULL AND term IS NULL AND claim_day IS NULL) t WHERE created_at>=$2::date AND created_at<$2::date+interval '1 month' GROUP BY day,type ORDER BY day`,
         [user, month + '-01'],
@@ -417,6 +420,8 @@ export class FinanceService {
         expenses: totals.expenses,
         net: money(new Decimal(totals.earnings).minus(totals.expenses)),
         projected: projectionAvailable ? money(projected) : null,
+        projected_income: projectionAvailable ? money(projectedByType.earnings) : null,
+        projected_expenses: projectionAvailable ? money(projectedByType.expenses) : null,
         recent: recent.rows,
         upcoming: upcoming
           .sort((a, b) => (a.due_at ?? '').localeCompare(b.due_at ?? ''))

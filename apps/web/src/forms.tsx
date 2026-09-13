@@ -47,13 +47,11 @@ export function Currency({ value = '$' }: { value?: string }) {
       <select name="currency" defaultValue={value}>
         <option value="$">USD · Dólares</option>
         <option value="bs">Bs · Tasa paralelo</option>
-        <option value="VES_BCV">Bs · Tasa BCV</option>
-        <option value="$bcv">USD indexado al BCV</option>
-        <option value="$parallel">Bs indexado al paralelo</option>
-        <option value="€">EUR · Conversión legado</option>
-        <option value="EUR">EUR · Tasa oficial</option>
+        <option value="$bcv">USD · Tasa BCV</option>
         <option value="EUR_PARALLEL">EUR · Tasa paralelo</option>
+        <option value="€">EUR · Tasa BCV</option>
       </select>
+      <small>Todo se convierte a USD al valor del dólar paralelo.</small>
     </label>
   );
 }
@@ -61,10 +59,12 @@ export function Provider({
   value = 'box',
   name = 'provider',
   auto = true,
+  credit = true,
 }: {
   value?: string;
   name?: string;
   auto?: boolean;
+  credit?: boolean;
 }) {
   return (
     <label>
@@ -72,7 +72,11 @@ export function Provider({
       <select name={name} defaultValue={value}>
         <option value="box">Caja · Disponible</option>
         <option value="savings">Ahorros</option>
-        {auto && <option value="auto">Automática · Mayor saldo</option>}
+        {auto && (
+          <option value="auto">
+            {credit ? 'Automática · Mayor saldo' : 'Automática · Menor saldo'}
+          </option>
+        )}
       </select>
     </label>
   );
@@ -106,7 +110,6 @@ export function EntryForm({ type, item, done }: { type: string; item?: any; done
           ...v,
           term: v.term ? Number(v.term) : null,
           claim_day: v.claim_day ? Number(v.claim_day) : null,
-          project_id: v.project_id ? Number(v.project_id) : null,
           auto_claim: v.auto_claim === 'on',
         })
       }
@@ -128,7 +131,7 @@ export function EntryForm({ type, item, done }: { type: string; item?: any; done
         <Amount value={item?.amount} />
         <Currency value={item?.currency} />
       </div>
-      <Provider value={item?.provider} />
+      <Provider value={item?.provider ?? 'auto'} credit={type === 'earnings'} />
       <label>
         Frecuencia
         <select
@@ -190,14 +193,6 @@ export function EntryForm({ type, item, done }: { type: string; item?: any; done
         />
         <small>Vinculan tus gastos con las categorías del presupuesto.</small>
       </label>
-      <details>
-        <summary>Asociar a un proyecto</summary>
-        <label>
-          ID del proyecto
-          <input name="project_id" type="number" min="1" defaultValue={item?.project_id} />
-          <small>Los movimientos de proyecto no afectan tus cuentas personales.</small>
-        </label>
-      </details>
       <p className="form-note">
         {recurrence === 'one_time'
           ? 'El saldo se actualizará al guardar.'

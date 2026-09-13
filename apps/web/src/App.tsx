@@ -123,7 +123,7 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
     [reportKind, setReportKind] = useState('expenses'),
     [from, setFrom] = useState(''),
     [to, setTo] = useState(''),
-    [project, setProject] = useState('');
+    [filtersOpen, setFiltersOpen] = useState(false);
   const [modal, setModal] = useState<{ title: string; content: ReactNode } | null>(null),
     [menu, setMenu] = useState(false);
   const reload = () => setRevision((x) => x + 1);
@@ -152,8 +152,8 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
     setNumber(1);
     setMode('all');
     setProvider('');
-    setProject('');
     setMenu(false);
+    setFiltersOpen(false);
   }, [page]);
   useEffect(() => {
     if (!toast) return;
@@ -164,7 +164,6 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
   if (provider) params.set('provider', provider);
   if (from) params.set('from', from);
   if (to) params.set('to', to);
-  if (project) params.set('project_id', project);
   const query = params.toString();
   useEffect(() => {
     let active = true;
@@ -432,12 +431,14 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                       icon={<ArrowDownLeft size={20} />}
                       positive
                       note="Lo que ha entrado a tus cuentas"
+                      upcoming={data.projected_income}
                     />
                     <Metric
                       title="Gastos del mes"
                       value={data.expenses}
                       icon={<ArrowUpRight size={20} />}
                       note="Lo que has destinado este mes"
+                      upcoming={data.projected_expenses}
                     />
                     <Metric
                       title="Balance del mes"
@@ -620,8 +621,17 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                         onChange={(e) => setQ(e.target.value)}
                       />
                     </div>
+                    <button
+                      type="button"
+                      className={'filters-toggle' + (filtersOpen ? ' open' : '')}
+                      aria-expanded={filtersOpen}
+                      aria-label={filtersOpen ? 'Ocultar filtros' : 'Mostrar filtros'}
+                      onClick={() => setFiltersOpen((v) => !v)}
+                    >
+                      <ChevronRight size={18} />
+                    </button>
                   </div>
-                  <div className="filters">
+                  <div className={'filters' + (filtersOpen ? ' filters-open' : '')}>
                     <SlidersHorizontal size={15} />
                     <select
                       aria-label="Filtrar cuenta"
@@ -659,17 +669,6 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                         }}
                       />
                     </label>
-                    <input
-                      aria-label="ID de proyecto"
-                      type="number"
-                      min="1"
-                      placeholder="Proyecto (opcional)"
-                      value={project}
-                      onChange={(e) => {
-                        setProject(e.target.value);
-                        setNumber(1);
-                      }}
-                    />
                     {page === 'reports' && (
                       <>
                         <a
@@ -909,7 +908,7 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                                           }
                                         >
                                           <Amount value={e.amount} />
-                                          <Provider />
+                                          <Provider value="auto" credit={false} />
                                           <label className="checkbox">
                                             <input type="checkbox" name="not_discount" /> No
                                             descontar de mis cuentas
@@ -1067,12 +1066,14 @@ function Metric({
   icon,
   note,
   positive = false,
+  upcoming,
 }: {
   title: string;
   value: string;
   icon: ReactNode;
   note: string;
   positive?: boolean;
+  upcoming?: string | null;
 }) {
   return (
     <section className="metric-card">
@@ -1081,6 +1082,11 @@ function Metric({
         <span className={positive ? 'positive-bg' : 'expense-bg'}>{icon}</span>
       </div>
       <h2>{usd(value)}</h2>
+      {upcoming != null && Number(upcoming) > 0 && (
+        <small className={'metric-upcoming ' + (positive ? 'positive' : 'danger')}>
+          {positive ? '+' : '−'} {usd(upcoming)} próximos
+        </small>
+      )}
       <p>{note}</p>
       <div className={'metric-line ' + (positive ? 'green' : '')} />
     </section>

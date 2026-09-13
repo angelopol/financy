@@ -11,7 +11,7 @@ import { ActionsService } from '../src/ai/actions';
 import { ActivityService } from '../src/activity';
 import { GeminiService, MAX_CONTEXT_BYTES } from '../src/ai/gemini';
 import { FinancialContextService } from '../src/ai/financial-context';
-import { dueAt, now } from '../src/domain';
+import { dueAt, now, words } from '../src/domain';
 import { csvCell } from '../src/controllers';
 import { createApp } from '../src/app';
 const db = new TestDatabase(),
@@ -62,11 +62,23 @@ test('income create, edit and delete keep balances and history consistent', asyn
 });
 test('split debit refunds exact original allocations', async () => {
   const u = await user(40, 100);
+  // Expenses auto-select the lower-balance account (box, 40 < 100) first; once
+  // that's drained, the remainder comes from savings. The recorded `provider`
+  // still ends up 'savings' since it contributed the larger share.
   const e = await f.save(u, 'expenses', entry('120', { provider: 'auto' }));
   assert.equal(e.provider, 'savings');
-  assert.deepEqual(await f.balances(db, u), { box: '20.00', savings: '0.00' });
+  assert.deepEqual(await f.balances(db, u), { box: '0.00', savings: '20.00' });
   await f.remove(u, 'expenses', e.id);
   assert.deepEqual(await f.balances(db, u), { box: '40.00', savings: '100.00' });
+});
+test('auto account selection favors the higher balance for income and the lower balance for expenses', async () => {
+  const u = await user(30, 100);
+  const income = await f.save(u, 'earnings', entry('10', { provider: 'auto' }));
+  assert.equal(income.provider, 'savings');
+  assert.deepEqual(await f.balances(db, u), { box: '30.00', savings: '110.00' });
+  const expense = await f.save(u, 'expenses', entry('10', { provider: 'auto' }));
+  assert.equal(expense.provider, 'box');
+  assert.deepEqual(await f.balances(db, u), { box: '20.00', savings: '110.00' });
 });
 test('insufficient funds roll back an expense and its history', async () => {
   const u = await user(10, 5);
@@ -168,6 +180,19 @@ test('project scope always includes owner and does not touch personal accounts',
   assert.equal((await f.list(other, 'earnings', { project_id: 42 })).total, 0);
   await assert.rejects(f.remove(other, 'earnings', e.id));
   assert.equal((await f.balances(db, u)).box, '0.00');
+});
+test('words() drops short filler words like Laravel\'s SlugNormalizer (>= 3 chars, deduped)', () => {
+  assert.deepEqual(
+    words('Compra de mercado en la panadería del barrio'),
+    ['compra', 'mercado', 'panaderia', 'del', 'barrio'],
+  );
+  assert.deepEqual(words('la el de un'), []);
+  assert.deepEqual(words('Pan pan PAN'), ['pan']);
+});
+test('creating an entry without an explicit slug auto-tags it from the description', async () => {
+  const u = await user(100);
+  const e = await f.save(u, 'expenses', entry('12', { slug: undefined, description: 'Mercado del barrio' }));
+  assert.equal(e.slug, 'mercado del barrio');
 });
 test('budget uses normalized shared keywords within selected month', async () => {
   const u = await user(100);
@@ -418,7 +443,13 @@ test('currency conversions preserve legacy formulas and fail closed', async () =
   assert.equal(await rates.convert('bs', '400'), '10.00');
   assert.equal(await rates.convert('$bcv', '100'), '90.00');
   assert.equal(await rates.convert('€', '100'), '110.00');
-  assert.equal(await rates.convert('EUR', '36'), '44.00');
+  assert.equal(await rates.convert('EUR_PARALLEL', '36'), '43.20');
+  // '$parallel' (duplicated 'bs'), 'VES_BCV' and 'EUR' (both broke the "always
+  // ends up USD at the parallel rate" rule) were removed rather than merely
+  // hidden from the UI, so no code path can still reach their old formulas.
+  await assert.rejects(rates.convert('$parallel', '10'));
+  await assert.rejects(rates.convert('VES_BCV', '10'));
+  await assert.rejects(rates.convert('EUR', '10'));
   const broken = new RatesService();
   broken.get = async () => ({}) as any;
   await assert.rejects(broken.convert('bs', '5'));

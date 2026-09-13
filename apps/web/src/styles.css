@@ -590,6 +590,12 @@ main {
   letter-spacing: -1px;
   margin-top: 20px;
 }
+.metric-upcoming {
+  display: block;
+  font-size: 10px;
+  font-weight: 650;
+  margin-top: 6px;
+}
 .metric-card p {
   font-size: 9px;
   color: #a0a794;
@@ -1139,6 +1145,9 @@ footer span:first-child {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.filters-toggle {
+  display: none;
 }
 .row-actions {
   display: flex;
@@ -2177,10 +2186,37 @@ dialog::backdrop {
   }
   .list-toolbar {
     padding: 17px;
+    flex-wrap: wrap;
+  }
+  .search-field {
+    order: 1;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .filters-toggle {
+    order: 2;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid #e5ebdd;
+    border-radius: 7px;
+    color: #7d8e6a;
+    background: #fbfcf8;
+    transition: transform 0.15s ease;
+  }
+  .filters-toggle.open {
+    transform: rotate(90deg);
   }
   .filters {
+    display: none;
     padding: 0 17px 16px;
     gap: 8px;
+  }
+  .filters.filters-open {
+    display: flex;
   }
   .tabs button {
     font-size: 10px;
@@ -2369,6 +2405,7 @@ nav,
 [data-theme='dark'] .search-field,
 [data-theme='dark'] .filters select,
 [data-theme='dark'] .filters input,
+[data-theme='dark'] .filters-toggle,
 [data-theme='dark'] .tabs,
 [data-theme='dark'] .form input,
 [data-theme='dark'] .form select,

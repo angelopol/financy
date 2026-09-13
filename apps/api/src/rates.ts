@@ -88,22 +88,23 @@ export class RatesService {
     let factor: Decimal;
     switch (currency) {
       case 'bs':
-      case '$parallel':
+        // Bolívares always convert through the parallel rate: everything
+        // ultimately lands in USD at the parallel rate, never the official one.
         factor = new Decimal(1).div(required('parallel'));
         break;
-      case 'VES_BCV':
-        factor = new Decimal(1).div(required('bcv'));
-        break;
       case '$bcv':
+        // An amount priced at the official USD rate, re-based to its
+        // parallel-rate USD equivalent.
         factor = required('bcv').div(required('parallel'));
         break;
       case '€':
+        // Euro priced at the official (BCV) rate, converted to its
+        // parallel-rate USD equivalent.
         factor = required('euro').div(required('parallel'));
         break;
-      case 'EUR':
-        factor = required('euro').div(required('bcv'));
-        break;
       case 'EUR_PARALLEL':
+        // Euro priced at the parallel-market rate, converted to its
+        // parallel-rate USD equivalent.
         factor = required('euro_parallel').div(required('parallel'));
         break;
       default:
