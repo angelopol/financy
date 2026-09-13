@@ -6,7 +6,10 @@ export class TestDatabase extends Database {
   readonly pg = new PGlite({ parsers: { 1114: (v) => v, 1700: (v) => v, 20: (v) => v } });
   async setup() {
     await this.pg.exec(
-      "SET timezone='America/Caracas';" + readFileSync(resolve('database/001_schema.sql'), 'utf8') + readFileSync(resolve('database/002_ai.sql'), 'utf8'),
+      "SET timezone='America/Caracas';" +
+        readFileSync(resolve('database/001_schema.sql'), 'utf8') +
+        readFileSync(resolve('database/002_ai.sql'), 'utf8') +
+        readFileSync(resolve('database/003_users_name.sql'), 'utf8'),
     );
   }
   override async query(text: string, values: any[] = []): Promise<any> {
