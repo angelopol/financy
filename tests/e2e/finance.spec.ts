@@ -84,9 +84,16 @@ test('desktop and mobile financial flows', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Tu panorama financiero' })).toBeVisible();
   await expect(page.getByText('Balance total', { exact: true })).toBeVisible();
   await page.screenshot({ path: 'artifacts/dashboard-mobile.png', fullPage: true });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
-    true,
-  );
+  // Comparing scrollWidth against innerWidth alone wouldn't catch a wide, unwrapped
+  // table inflating the browser's own layout viewport (both grow together); assert
+  // the viewport itself stays pinned to the width we asked for.
+  expect(await page.evaluate(() => window.innerWidth)).toBe(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await page.getByRole('button', { name: 'Abrir menú' }).click();
+  await page.getByRole('link', { name: 'Ingresos', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Ingresos' })).toBeVisible();
+  expect(await page.evaluate(() => window.innerWidth)).toBe(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await page.getByRole('button', { name: 'Abrir menú' }).click();
   await page.getByRole('link', { name: 'Lista de compras', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Lista de compras' })).toBeVisible();

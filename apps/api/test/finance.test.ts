@@ -9,7 +9,8 @@ import { RatesService } from '../src/rates';
 import { JobsService } from '../src/jobs';
 import { ActionsService } from '../src/ai/actions';
 import { ActivityService } from '../src/activity';
-import { GeminiService } from '../src/ai/gemini';
+import { GeminiService, MAX_CONTEXT_BYTES } from '../src/ai/gemini';
+import { FinancialContextService } from '../src/ai/financial-context';
 import { dueAt, now } from '../src/domain';
 import { csvCell } from '../src/controllers';
 import { createApp } from '../src/app';
@@ -274,6 +275,55 @@ test('chat proposes an action through a mocked Gemini call, and only the confirm
     assert.equal((await f.balances(db, uid)).box, '130.00');
     const again = await request('/ai/actions/' + modelMessage.action.id + '/confirm', 'POST', {});
     assert.equal(again.status, 409);
+  } finally {
+    await app.getHttpServer().close();
+  }
+});
+test('chat degrades to a text answer instead of exceeding Gemini\'s request cap when tool results are heavy', async () => {
+  process.env.APP_URL = 'http://localhost:5173';
+  process.env.GEMINI_API_KEY = 'test-key';
+  const app = await createApp(db);
+  const gemini = app.get(GeminiService);
+  const finances = app.get(FinancialContextService);
+  const heavyRow = { id: 1, description: 'x'.repeat(2000), amount: '10.00' };
+  finances.query = (async () => ({
+    resource: 'earnings',
+    rows: Array.from({ length: 30 }, () => heavyRow),
+  })) as any;
+  let biggestRequestBytes = 0;
+  gemini.generate = (async (system: string, contents: unknown, _signal: unknown, tools?: unknown[]) => {
+    const bytes = Buffer.byteLength(system) + Buffer.byteLength(JSON.stringify(contents));
+    biggestRequestBytes = Math.max(biggestRequestBytes, bytes);
+    assert.ok(bytes < MAX_CONTEXT_BYTES, `request body ${bytes} exceeded MAX_CONTEXT_BYTES`);
+    if (tools && tools.length)
+      return { role: 'model', parts: [{ functionCall: { name: 'consultar_finanzas', args: { resource: 'earnings' } } }] };
+    return { role: 'model', parts: [{ text: 'Esto es lo que pude revisar con la información disponible.' }] };
+  }) as any;
+  await app.listen(0, '127.0.0.1');
+  const base = await app.getUrl();
+  let cookie = '';
+  const request = async (path: string, method = 'GET', body?: any) =>
+    fetch(base + '/api' + path, {
+      method,
+      headers: { Origin: 'http://localhost:5173', 'Content-Type': 'application/json', Cookie: cookie },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  try {
+    const registered = await request('/auth/register', 'POST', {
+      name: 'Heavy Context User',
+      email: `heavy${sequence++}@test.com`,
+      password: 'password1234',
+    });
+    cookie = registered.headers.get('set-cookie')!.split(';')[0];
+    const sent = await request('/ai/messages', 'POST', {
+      request_id: crypto.randomUUID(),
+      message: 'Revisa todo mi historial de ingresos con el mayor detalle posible',
+    });
+    assert.equal(sent.status, 201);
+    const { messages } = await sent.json();
+    const modelMessage = messages.find((m: any) => m.role === 'model');
+    assert.equal(modelMessage.content, 'Esto es lo que pude revisar con la información disponible.');
+    assert.ok(biggestRequestBytes > MAX_CONTEXT_BYTES - 40_000 - 5_000);
   } finally {
     await app.getHttpServer().close();
   }
