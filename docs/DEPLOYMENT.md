@@ -1,8 +1,8 @@
 # Desplegar en Vercel
 
-Se usan dos proyectos del mismo repositorio. Vercel detecta NestJS mediante `src/main.ts` y lo ejecuta como una función; el frontend se sirve como archivos estáticos.
+Se usan dos proyectos del mismo repositorio. La API se expone como una función serverless de Node.js mediante `apps/api/api/[[...path]].ts` (que inicializa Nest una sola vez por instancia y reenvía cada request a su adaptador Express); el frontend se sirve como archivos estáticos.
 
-Referencia oficial: https://vercel.com/docs/frameworks/backend/nestjs
+El preset "Framework: NestJS" de Vercel no se usa: en pruebas devolvía `Invalid export found in module ".../src/app.js"` porque esperaba un archivo de entrada distinto al que produce esta build. `apps/api/vercel.json` fija `"framework": null` para evitar que Vercel lo detecte automáticamente por la presencia de `@nestjs/core`; en el dashboard del proyecto, el Framework Preset debe quedar en **Other**.
 
 ## 1. Preparar PostgreSQL
 
@@ -13,10 +13,10 @@ En Supabase, toma la conexión de **Connect → Pooler** que corresponda a tu en
 ## 2. Proyecto de API
 
 - Root Directory: `apps/api`.
-- Framework Preset: NestJS.
+- Framework Preset: Other.
 - Activa acceso a los archivos fuera del Root Directory para resolver el workspace y el lockfile de la raíz.
 - Usa Node 22 o 24.
-- Build: `npm run build` dentro de `apps/api` (o el preset NestJS).
+- No hace falta configurar Build Command ni Output Directory: Vercel construye `api/[[...path]].ts` como función automáticamente a partir de la convención de archivos.
 
 Variables, exclusivamente del lado servidor:
 
