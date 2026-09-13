@@ -15,7 +15,7 @@ En Supabase, toma la conexión de **Connect → Pooler** que corresponda a tu en
 - Root Directory: la raíz del repositorio (no `apps/web` ni `apps/api`).
 - Framework Preset: Other.
 - Usa Node 22 o 24.
-- Build Command y Output Directory ya quedan fijados en `vercel.json` (`npm run build -w apps/web` y `apps/web/dist`); no hace falta configurarlos en el dashboard.
+- Build Command y Output Directory ya quedan fijados en `vercel.json`; no hace falta configurarlos en el dashboard. El Build Command primero aplica el esquema (`npm run db:migrate -w apps/api`) y luego construye el frontend (`npm run build -w apps/web`).
 - Vercel construye `api/[[...path]].ts` como función automáticamente a partir de la convención de archivos, sin build propio: internamente importa y compila `apps/api/src/app.ts`, por lo que `tsconfig.json` en la raíz debe mantener `experimentalDecorators`/`emitDecoratorMetadata` para que los decoradores de Nest compilen ahí.
 
 Variables de entorno, exclusivamente del lado servidor (nunca con prefijo `VITE_`, que sí llega al bundle del navegador):
@@ -35,15 +35,15 @@ Para producción, verifica un dominio propio en Resend y usa un remitente de ese
 
 El navegador llama a `/api` en el mismo origen que sirve el frontend (mismo dominio, misma función). La cookie de sesión queda HttpOnly de primera parte, sin CORS abierto. Las escrituras exigen `Origin === APP_URL` y JSON. Para previews, cada deployment de Vercel tiene su propia URL; si necesitas que las escrituras funcionen en un preview, define `APP_URL` para ese entorno o prueba solo lecturas. No conectes un preview a la base de producción. Si habilitas Deployment Protection, el cron necesita acceso compatible con esa protección.
 
-## 3. Aplicar esquema
+## 3. Esquema automático en cada deploy
 
-Desde una estación confiable, con `apps/api/.env` apuntando a la base de destino:
+El Build Command de Vercel ejecuta `npm run db:migrate -w apps/api` antes de construir el frontend, así que el esquema se aplica solo en cada deploy (producción y previews) contra el `DATABASE_URL` configurado para ese entorno. El comando es transaccional, idempotente (usa `CREATE TABLE IF NOT EXISTS`/`CREATE INDEX IF NOT EXISTS`, nunca `DROP`/`ALTER`/`DELETE`) y falla el build entero si reconoce una instalación Laravel incompleta o no puede conectar — sin aplicar cambios parciales. Volver a desplegar sin migraciones pendientes es un no-op seguro.
+
+Para aplicarlo manualmente contra otra base (por ejemplo antes del primer deploy, o desde una estación de confianza), con `apps/api/.env` apuntando al destino:
 
 ```sh
 npm run db:migrate
 ```
-
-El comando es transaccional y falla si reconoce una instalación Laravel incompleta. No se ejecuta durante el build ni al recibir solicitudes.
 
 ## 4. Cron y correo
 

@@ -10,3 +10,6 @@ playwright-report/
 *.tsbuildinfo
 .local/
 laravel_legacy/
+
+.vercel
+.env*
