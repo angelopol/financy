@@ -24,6 +24,8 @@ import { JobsController, JobsService } from './jobs';
 import { ChatController, ChatService } from './ai/chat';
 import { GeminiService } from './ai/gemini';
 import { FinancialContextService } from './ai/financial-context';
+import { ActionsService } from './ai/actions';
+import { ActivityController, ActivityService } from './activity';
 @Catch()
 class Errors implements ExceptionFilter {
   catch(error: any, host: ArgumentsHost) {
@@ -70,10 +72,10 @@ class HealthController {
     FinanceService,
     PlanningService,
     JobsService,
-    GeminiService,FinancialContextService,ChatService,
+    GeminiService,FinancialContextService,ChatService,ActionsService,ActivityService,
     { provide: APP_FILTER, useClass: Errors },
   ],
-  controllers: [HealthController, AuthController, FinanceController, JobsController, ChatController],
+  controllers: [HealthController, AuthController, FinanceController, JobsController, ChatController, ActivityController],
 })
 export class AppModule {}
 export async function createApp(database?: Database) {
@@ -88,10 +90,10 @@ export async function createApp(database?: Database) {
         FinanceService,
         PlanningService,
         JobsService,
-        GeminiService,FinancialContextService,ChatService,
+        GeminiService,FinancialContextService,ChatService,ActionsService,ActivityService,
         { provide: APP_FILTER, useClass: Errors },
       ],
-      controllers: [HealthController, AuthController, FinanceController, JobsController, ChatController],
+      controllers: [HealthController, AuthController, FinanceController, JobsController, ChatController, ActivityController],
     })(module);
   const app = await NestFactory.create<NestExpressApplication>(module, {
     logger: ['error', 'warn'],

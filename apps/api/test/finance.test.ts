@@ -7,6 +7,9 @@ import { FinanceService } from '../src/finance';
 import { PlanningService } from '../src/planning';
 import { RatesService } from '../src/rates';
 import { JobsService } from '../src/jobs';
+import { ActionsService } from '../src/ai/actions';
+import { ActivityService } from '../src/activity';
+import { GeminiService } from '../src/ai/gemini';
 import { dueAt, now } from '../src/domain';
 import { csvCell } from '../src/controllers';
 import { createApp } from '../src/app';
@@ -15,7 +18,9 @@ const db = new TestDatabase(),
 rates.get = async () =>
   ({ bcv: 36, parallel: 40, euro: 44, euro_parallel: 48, source: 'test' }) as any;
 const f = new FinanceService(db, rates),
-  p = new PlanningService(f);
+  p = new PlanningService(f),
+  activity = new ActivityService(db, f, p),
+  actions = new ActionsService(db, f, p, activity);
 let sequence = 0;
 async function user(box = 0, savings = 0) {
   const id = (
@@ -175,6 +180,175 @@ test('budget uses normalized shared keywords within selected month', async () =>
   const b = await p.budgets(u, now().toFormat('yyyy-MM'));
   assert.equal(b[0].spent, '25.00');
   assert.equal(b[0].remaining, '75.00');
+});
+test('AI actions stay inert until confirmed, validate args and cannot be resolved twice', async () => {
+  const u = await user(100);
+  const invalid = await actions.propose(u, 'registrar_ingreso', { description: '', amount: '10' });
+  assert.ok('error' in invalid);
+  const proposal = await actions.propose(u, 'registrar_ingreso', {
+    description: 'Freelance',
+    amount: '25',
+  });
+  assert.ok('id' in proposal);
+  assert.equal((await f.balances(db, u)).box, '100.00');
+  const confirmed = await actions.confirm(u, proposal.id);
+  assert.equal(confirmed.ok, true);
+  assert.equal((await f.balances(db, u)).box, '125.00');
+  await assert.rejects(actions.confirm(u, proposal.id));
+  await assert.rejects(actions.cancel(u, proposal.id));
+});
+test('AI actions revert to pending and can be retried after a failed confirm', async () => {
+  const u = await user(10);
+  const proposal = await actions.propose(u, 'registrar_gasto', {
+    description: 'Compra grande',
+    amount: '999',
+  });
+  assert.ok('id' in proposal);
+  await assert.rejects(actions.confirm(u, proposal.id));
+  const row = (
+    await db.query('SELECT status FROM financy_ai_actions WHERE id=$1', [proposal.id])
+  ).rows[0];
+  assert.equal(row.status, 'pending');
+  const cancelled = await actions.cancel(u, proposal.id);
+  assert.equal(cancelled.ok, true);
+});
+test('AI actions are scoped to their own user', async () => {
+  const owner = await user(50),
+    intruder = await user();
+  const proposal = await actions.propose(owner, 'transferir_dinero', { amount: '10', from: 'box' });
+  assert.ok('id' in proposal);
+  await assert.rejects(actions.confirm(intruder, proposal.id));
+  await assert.rejects(actions.cancel(intruder, proposal.id));
+  assert.equal((await actions.confirm(owner, proposal.id)).ok, true);
+});
+test('chat proposes an action through a mocked Gemini call, and only the confirm endpoint applies it', async () => {
+  process.env.APP_URL = 'http://localhost:5173';
+  process.env.GEMINI_API_KEY = 'test-key';
+  const userRow = { email: `chat${sequence++}@test.com`, password: 'password1234' };
+  const app = await createApp(db);
+  const gemini = app.get(GeminiService);
+  let call = 0;
+  gemini.generate = (async () => {
+    call++;
+    if (call === 1)
+      return {
+        role: 'model',
+        parts: [{ functionCall: { name: 'registrar_ingreso', args: { description: 'Freelance', amount: 30 } } }],
+      };
+    return { role: 'model', parts: [{ text: 'Preparé el ingreso; confírmalo cuando quieras.' }] };
+  }) as any;
+  await app.listen(0, '127.0.0.1');
+  const base = await app.getUrl();
+  let cookie = '';
+  const request = async (path: string, method = 'GET', body?: any) =>
+    fetch(base + '/api' + path, {
+      method,
+      headers: { Origin: 'http://localhost:5173', 'Content-Type': 'application/json', Cookie: cookie },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  try {
+    const registered = await request('/auth/register', 'POST', {
+      name: 'Chat User',
+      ...userRow,
+    });
+    cookie = registered.headers.get('set-cookie')!.split(';')[0];
+    const uid = (await registered.json()).id;
+    await db.query('UPDATE boxes SET amount=100 WHERE "user"=$1', [uid]);
+    const sent = await request('/ai/messages', 'POST', {
+      request_id: crypto.randomUUID(),
+      message: 'Registra un ingreso de 30 por freelance',
+    });
+    assert.equal(sent.status, 201);
+    const { messages } = await sent.json();
+    const modelMessage = messages.find((m: any) => m.role === 'model');
+    assert.ok(modelMessage.action);
+    assert.equal(modelMessage.action.status, 'pending');
+    assert.equal((await f.balances(db, uid)).box, '100.00');
+    const unauthenticated = await fetch(base + '/api/ai/actions/' + modelMessage.action.id + '/confirm', {
+      method: 'POST',
+      headers: { Origin: 'http://localhost:5173', 'Content-Type': 'application/json' },
+    });
+    assert.equal(unauthenticated.status, 401);
+    const confirmed = await request('/ai/actions/' + modelMessage.action.id + '/confirm', 'POST', {});
+    assert.equal(confirmed.status, 201);
+    assert.equal((await f.balances(db, uid)).box, '130.00');
+    const again = await request('/ai/actions/' + modelMessage.action.id + '/confirm', 'POST', {});
+    assert.equal(again.status, 409);
+  } finally {
+    await app.getHttpServer().close();
+  }
+});
+test('manual actions are logged and can be undone through the HTTP API', async () => {
+  process.env.APP_URL = 'http://localhost:5173';
+  const app = await createApp(db);
+  await app.listen(0, '127.0.0.1');
+  const base = await app.getUrl();
+  let cookie = '';
+  const request = async (path: string, method = 'GET', body?: any) =>
+    fetch(base + '/api' + path, {
+      method,
+      headers: { Origin: 'http://localhost:5173', 'Content-Type': 'application/json', Cookie: cookie },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  try {
+    const registered = await request('/auth/register', 'POST', {
+      name: 'Activity User',
+      email: `activity${sequence++}@test.com`,
+      password: 'password1234',
+    });
+    cookie = registered.headers.get('set-cookie')!.split(';')[0];
+    const uid = (await registered.json()).id;
+    await db.query('UPDATE boxes SET amount=100 WHERE "user"=$1', [uid]);
+
+    const created = await request('/entries/earnings', 'POST', entry('30', { provider: 'box' }));
+    assert.equal(created.status, 201);
+    const earningId = (await created.json()).id;
+    assert.equal((await f.balances(db, uid)).box, '130.00');
+
+    const list = await (await request('/activity')).json();
+    const earningActivity = list.activity.find((a: any) => a.kind === 'earning_created');
+    assert.ok(earningActivity);
+    assert.equal(earningActivity.can_undo, true);
+
+    const unauthenticated = await fetch(base + '/api/activity/' + earningActivity.id + '/undo', {
+      method: 'POST',
+      headers: { Origin: 'http://localhost:5173', 'Content-Type': 'application/json' },
+    });
+    assert.equal(unauthenticated.status, 401);
+
+    const undone = await request('/activity/' + earningActivity.id + '/undo', 'POST', {});
+    assert.equal(undone.status, 201);
+    assert.equal((await f.balances(db, uid)).box, '100.00');
+    assert.equal((await request('/entries/earnings/' + earningId)).status, 404);
+    assert.equal((await request('/activity/' + earningActivity.id + '/undo', 'POST', {})).status, 409);
+
+    await request('/accounts/transfer', 'POST', { amount: '20', from: 'box' });
+    assert.deepEqual(await f.balances(db, uid), { box: '80.00', savings: '20.00' });
+    const transferActivity = (await (await request('/activity')).json()).activity.find(
+      (a: any) => a.kind === 'transfer',
+    );
+    assert.equal((await request('/activity/' + transferActivity.id + '/undo', 'POST', {})).status, 201);
+    assert.deepEqual(await f.balances(db, uid), { box: '100.00', savings: '0.00' });
+
+    const secondEarning = await request('/entries/earnings', 'POST', entry('5'));
+    const secondActivity = (await (await request('/activity')).json()).activity.find(
+      (a: any) => a.kind === 'earning_created' && a.id !== earningActivity.id,
+    );
+    const intruder = await request('/auth/register', 'POST', {
+      name: 'Intruder',
+      email: `activity${sequence++}@test.com`,
+      password: 'password1234',
+    });
+    const intruderCookie = intruder.headers.get('set-cookie')!.split(';')[0];
+    const asIntruder = await fetch(base + '/api/activity/' + secondActivity.id + '/undo', {
+      method: 'POST',
+      headers: { Origin: 'http://localhost:5173', 'Content-Type': 'application/json', Cookie: intruderCookie },
+    });
+    assert.equal(asIntruder.status, 409);
+    assert.equal((await secondEarning.json()).amount, '5.00');
+  } finally {
+    await app.getHttpServer().close();
+  }
 });
 test('expense splits validate total, paid amounts and ownership', async () => {
   const u = await user(100),

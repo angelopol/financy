@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { AuthGuard, AuthRequest } from './auth';
 import { FinanceService } from './finance';
 import { PlanningService } from './planning';
+import { ActivityService } from './activity';
 import { amountSchema, currencySchema, idSchema, kind, monthSchema, now, parse } from './domain';
 export const csvCell = (v: unknown) => {
   let s = String(v ?? '');
@@ -29,6 +30,7 @@ export class FinanceController {
   constructor(
     @Inject(FinanceService) private f: FinanceService,
     @Inject(PlanningService) private p: PlanningService,
+    @Inject(ActivityService) private activity: ActivityService,
   ) {}
   @Get('dashboard') dashboard(@Req() r: AuthRequest, @Query('month') m?: string) {
     return this.f.dashboard(r.user.id, parse(monthSchema, m ?? now().toFormat('yyyy-MM')));
@@ -46,12 +48,21 @@ export class FinanceController {
   @Get('entries/:kind') list(@Req() r: AuthRequest, @Param('kind') k: string, @Query() q: any) {
     return this.f.list(r.user.id, kind(k), q);
   }
-  @Post('entries/:kind') create(
+  @Post('entries/:kind') async create(
     @Req() r: AuthRequest,
     @Param('kind') k: string,
     @Body() b: unknown,
   ) {
-    return this.f.save(r.user.id, kind(k), b);
+    const t = kind(k);
+    const row = await this.f.save(r.user.id, t, b);
+    await this.activity.log(
+      r.user.id,
+      'user',
+      t === 'earnings' ? 'earning_created' : 'expense_created',
+      row.id,
+      `${t === 'earnings' ? 'Ingreso registrado' : 'Gasto registrado'}: "${row.description}" por ${row.amount} ${row.currency ?? '$'}`,
+    );
+    return row;
   }
   @Patch('entries/:kind/:id') update(
     @Req() r: AuthRequest,
@@ -110,14 +121,32 @@ export class FinanceController {
     }
     res.end();
   }
-  @Post('accounts/transfer') transfer(@Req() r: AuthRequest, @Body() b: unknown) {
-    return this.p.transfer(r.user.id, b);
+  @Post('accounts/transfer') async transfer(@Req() r: AuthRequest, @Body() b: unknown) {
+    const v = parse(z.object({ amount: amountSchema, from: z.enum(['box', 'savings']) }), b);
+    const result = await this.p.transfer(r.user.id, v);
+    await this.activity.log(
+      r.user.id,
+      'user',
+      'transfer',
+      null,
+      `Transferencia de ${v.amount} de ${v.from === 'box' ? 'Caja' : 'Ahorros'} a ${v.from === 'box' ? 'Ahorros' : 'Caja'}`,
+      v,
+    );
+    return result;
   }
   @Get('shopping') shopping(@Req() r: AuthRequest, @Query() q: any) {
     return this.p.shopList(r.user.id, q);
   }
-  @Post('shopping') shopCreate(@Req() r: AuthRequest, @Body() b: unknown) {
-    return this.p.shopSave(r.user.id, b);
+  @Post('shopping') async shopCreate(@Req() r: AuthRequest, @Body() b: unknown) {
+    const row = await this.p.shopSave(r.user.id, b);
+    await this.activity.log(
+      r.user.id,
+      'user',
+      'shopping_created',
+      row.id,
+      `Compra agregada a la lista: "${row.description}" por ${row.amount} $`,
+    );
+    return row;
   }
   @Patch('shopping/:id') shopUpdate(
     @Req() r: AuthRequest,
@@ -140,8 +169,16 @@ export class FinanceController {
   @Get('budgets') budgets(@Req() r: AuthRequest, @Query('month') month?: string) {
     return this.p.budgets(r.user.id, month ?? now().toFormat('yyyy-MM'));
   }
-  @Post('budgets') budgetCreate(@Req() r: AuthRequest, @Body() b: unknown) {
-    return this.p.budgetSave(r.user.id, b);
+  @Post('budgets') async budgetCreate(@Req() r: AuthRequest, @Body() b: unknown) {
+    const row = await this.p.budgetSave(r.user.id, b);
+    await this.activity.log(
+      r.user.id,
+      'user',
+      'budget_created',
+      row.id,
+      `Presupuesto creado: "${row.name}" por ${row.amount}`,
+    );
+    return row;
   }
   @Patch('budgets/:id') budgetUpdate(
     @Req() r: AuthRequest,

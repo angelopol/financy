@@ -32,6 +32,9 @@ import {
   Check,
   RefreshCw,
   Printer,
+  History,
+  Undo2,
+  Sparkles,
 } from 'lucide-react';
 import { api, ApiError, usd, dateLabel, currentMonth, accountLabel } from './api';
 import { Auth } from './Auth';
@@ -48,6 +51,7 @@ const navigation = [
   ['/shopping', 'Lista de compras', ShoppingBag],
   ['/reports', 'Reportes', ChartNoAxesCombined],
   ['/calculator', 'Conversor', Calculator],
+  ['/activity', 'Actividad', History],
 ] as const;
 const titles: Record<string, [string, string]> = {
   dashboard: ['Tu panorama financiero', 'Cada decisión cuenta. Dale un buen rumbo a tu dinero.'],
@@ -58,6 +62,7 @@ const titles: Record<string, [string, string]> = {
   shopping: ['Lista de compras', 'Compra con intención. Planifica antes de gastar.'],
   reports: ['Reportes', 'Tu historia financiera, con todos los detalles.'],
   calculator: ['Conversor de monedas', 'Convierte tus importes con las tasas disponibles.'],
+  activity: ['Actividad', 'Cada acción tuya o de Financy IA, con opción de deshacerla.'],
   profile: ['Tu perfil', 'Haz de Financy un espacio a tu medida.'],
 };
 export function App() {
@@ -127,6 +132,14 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
     reload();
     setToast('Listo. Tus finanzas están actualizadas.');
   };
+  useEffect(() => {
+    const onReload = (e: Event) => {
+      reload();
+      setToast((e as CustomEvent).detail ?? 'Tus finanzas están actualizadas.');
+    };
+    window.addEventListener('financy:reload', onReload);
+    return () => window.removeEventListener('financy:reload', onReload);
+  }, []);
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQ(q);
@@ -981,6 +994,7 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                 </section>
               )}
               {page === 'calculator' && <CalculatorPage rates={rates} />}
+              {page === 'activity' && <ActivityPage />}
               {page === 'profile' && <Profile user={user} setUser={setUser} notify={setToast} />}
             </>
           )}
@@ -1127,6 +1141,105 @@ function FlowChart({ rows, month }: { rows: any[]; month: string }) {
         </div>
       </div>
     </div>
+  );
+}
+function ActivityPage() {
+  const [items, setItems] = useState<any[] | null>(null),
+    [hasMore, setHasMore] = useState(false),
+    [busy, setBusy] = useState(''),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState('');
+  async function load(before?: string) {
+    if (before) setLoading(true);
+    setError('');
+    try {
+      const data = await api('/activity' + (before ? '?before=' + before : ''));
+      setItems((prev) => (before && prev ? [...prev, ...data.activity] : data.activity));
+      setHasMore(data.has_more);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    void load();
+  }, []);
+  async function undo(id: string) {
+    setBusy(id);
+    setError('');
+    try {
+      await api('/activity/' + id + '/undo', 'POST', {});
+      setItems((prev) =>
+        prev!.map((a) => (a.id === id ? { ...a, undone_at: new Date().toISOString() } : a)),
+      );
+      window.dispatchEvent(
+        new CustomEvent('financy:reload', { detail: 'Acción deshecha. Tus finanzas están actualizadas.' }),
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy('');
+    }
+  }
+  if (loading && !items) return <Loading />;
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <div>
+          <h2>Historial de acciones</h2>
+          <p>Tuyas y de Financy IA. Deshaz lo que no era lo que querías.</p>
+        </div>
+      </div>
+      {error && (
+        <div className="error" role="alert" style={{ margin: '0 23px 18px' }}>
+          {error}
+        </div>
+      )}
+      {items?.length ? (
+        <div className="activity-list">
+          {items.map((a) => (
+            <div className={'activity-row' + (a.undone_at ? ' undone' : '')} key={a.id}>
+              <span className="entry-icon">
+                {a.source === 'ai' ? <Sparkles size={18} /> : <History size={18} />}
+              </span>
+              <div className="activity-description">
+                <strong>{a.summary}</strong>
+                <small>
+                  {a.source === 'ai' ? 'Financy IA' : 'Tú'} ·{' '}
+                  {new Intl.DateTimeFormat('es-VE', {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                    timeZone: 'America/Caracas',
+                  }).format(new Date(a.created_at))}
+                </small>
+              </div>
+              {a.undone_at ? (
+                <span className="badge">Deshecho</span>
+              ) : a.can_undo ? (
+                <button className="small-button" disabled={busy === a.id} onClick={() => void undo(a.id)}>
+                  <Undo2 size={14} /> Deshacer
+                </button>
+              ) : (
+                <span className="badge">No reversible</span>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <Empty
+          title="Sin actividad todavía"
+          description="Aquí verás cada acción tuya o de Financy IA, con opción de deshacerla."
+        />
+      )}
+      {hasMore && (
+        <div className="upcoming-link">
+          <button className="text-link" disabled={loading} onClick={() => void load(items![items!.length - 1].id)}>
+            Cargar más <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
+    </section>
   );
 }
 function CalculatorPage({ rates }: { rates: any }) {

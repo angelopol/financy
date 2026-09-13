@@ -1319,6 +1319,37 @@ footer span:first-child {
   color: #9daa8d;
   text-decoration: line-through;
 }
+.activity-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-top: 1px solid var(--line);
+}
+.activity-row > .entry-icon {
+  background: #f2f5e9;
+  color: #96aa80;
+}
+.activity-description {
+  flex: 1;
+  min-width: 0;
+}
+.activity-description strong {
+  font-size: 12px;
+  display: block;
+}
+.activity-description small {
+  display: block;
+  font-size: 10px;
+  color: #98a58a;
+  margin-top: 5px;
+}
+.activity-row.undone {
+  opacity: 0.6;
+}
+.activity-row.undone .activity-description strong {
+  text-decoration: line-through;
+}
 .padded {
   padding: 28px;
 }
@@ -2464,6 +2495,16 @@ nav,
   color: #6f8266;
 }
 [data-theme='dark'] .shopping-description small {
+  color: #93a58c;
+}
+[data-theme='dark'] .activity-row {
+  border-color: #24382c;
+}
+[data-theme='dark'] .activity-row > .entry-icon {
+  background: #1f3527;
+  color: #bfe0a5;
+}
+[data-theme='dark'] .activity-description small {
   color: #93a58c;
 }
 [data-theme='dark'] .error {
