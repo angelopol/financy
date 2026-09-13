@@ -1,0 +1,87 @@
+/* Accessibility pass: the base design used many sub-11px labels; this raises the
+   smallest text app-wide to a legible floor and improves reading comfort, without
+   touching the fixed-height card layout in styles.css. */
+body {
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+.eyebrow,
+.badge,
+.today,
+.chart,
+.chart-scale,
+.chart-dates,
+.date-tile small,
+.entry-name small,
+.upcoming div small,
+.balance-caption,
+.balance-breakdown,
+.balance-breakdown strong,
+.card-label,
+.metric-card p,
+.limit-graphic small,
+footer,
+.month-picker input,
+.search-field input,
+.filters,
+.filters select,
+.filters input,
+.filters label,
+.workspace-label small,
+.user-card small,
+.form small,
+.form-note,
+.report-total small,
+.pagination,
+.breadcrumb,
+.auth-story .eyebrow,
+.modal-head .eyebrow,
+.chat-footer,
+.chat-context-note {
+  font-size: 11px;
+}
+td,
+th,
+.amount,
+.small-button,
+.tabs button {
+  font-size: 11px;
+}
+.entry-name strong,
+.upcoming div strong,
+h3,
+.panel-head h2,
+.shopping-description strong {
+  font-size: 13px;
+}
+p,
+.muted,
+.page-heading p,
+.form label,
+.error,
+.notice,
+.auth-form .muted,
+.budget-card p,
+.limit-note {
+  font-size: 13px;
+  line-height: 1.75;
+}
+.form input,
+.form select {
+  font-size: 14px;
+}
+.primary,
+.secondary {
+  font-size: 13px;
+}
+@media (prefers-contrast: more) {
+  :root {
+    --line: #9fae97;
+    --muted: #566253;
+  }
+  button:focus-visible,
+  a:focus-visible,
+  summary:focus-visible {
+    outline-width: 3px;
+  }
+}

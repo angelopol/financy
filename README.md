@@ -1,197 +1,79 @@
-# FINANCY
+# Financy
 
-## Despliegue en Render con Docker
+Aplicación de finanzas personales con **NestJS + React + TypeScript + PostgreSQL**, preparada para Vercel. La implementación nueva está en `apps/`; `laravel_legacy/` conserva la aplicación original sin cambios.
 
-El repositorio incluye un `Dockerfile` multi-stage y un Blueprint `render.yaml`.
-La imagen compila los assets de Vite, instala las dependencias PHP de produccion y
-sirve Laravel con Apache en el puerto indicado por Render.
+## Revisar la app ahora
 
-1. Sube el repositorio a GitHub, GitLab o Bitbucket.
-2. En Render, selecciona **New > Blueprint** y conecta el repositorio.
-3. Completa las variables marcadas como secretas:
-   - `APP_URL`: URL publica completa, por ejemplo `https://financy.onrender.com`.
-   - `DB_HOST`, `DB_PASSWORD`: credenciales PostgreSQL de Supabase.
-   - Si Supabase usa otros valores, ajusta tambien `DB_PORT`, `DB_DATABASE` y
-     `DB_USERNAME` en Render.
-4. Crea el servicio. El contenedor ejecutara `php artisan migrate --force` al
-   arrancar y Render comprobara `/up` antes de enviar trafico.
+Requiere Node.js 22 o superior.
 
-`APP_KEY` se genera una sola vez desde el Blueprint. No la cambies despues de que
-la aplicacion tenga usuarios, porque invalidaria sesiones y datos cifrados. Los
-logs se envian a `stderr`, por lo que aparecen directamente en el panel de Render.
-La imagen ejecuta siempre `php artisan migrate --force --no-interaction` al
-arrancar y no inicia Apache si una migracion falla. Esto evita desplegar codigo
-que consulte columnas que todavia no existen. En un servicio pago puede moverse
-esta operacion a un `preDeployCommand` dedicado.
-
-El filesystem de Render es efimero. Actualmente FINANCY no guarda archivos de
-usuario, pero si agregas uploads debes configurar S3/Supabase Storage o un disco
-persistente. Para ejecutar la tarea recurrente, crea opcionalmente un Cron Job con
-el mismo repositorio, schedule `0 11,23 * * *` (UTC) y Docker Command
-`php artisan amounts:cron`.
-
-## Recordatorios de ingresos por Gmail
-
-Configura `MAIL_HOST=smtp.gmail.com`, `MAIL_PORT=587`, `MAIL_ENCRYPTION=tls`,
-`MAIL_USERNAME` con la cuenta Gmail y `MAIL_PASSWORD` con una contraseña de
-aplicación de Google (no la contraseña normal). `MAIL_FROM_ADDRESS` debe ser la
-misma cuenta. Ejecuta el scheduler de Laravel cada minuto o crea un cron diario
-para `php artisan earnings:send-reminders`. Solo se envían recordatorios a
-usuarios con correo verificado y nunca se duplica un aviso para la misma fecha
-de claim.
-
-FINANCY es una aplicación para gestionar las finanzas personales de los usuarios. Permite a los usuarios registrar y gestionar sus ingresos, gastos, ahorros y listas de compras. La aplicación está construida utilizando una combinación de tecnologías modernas como React, Inertia.js, Laravel, Tailwind CSS y MySQL.
-
-## Tecnologías Utilizadas
-
-- **React**: Utilizado para construir la interfaz de usuario interactiva.
-- **Inertia.js**: Facilita la integración entre Laravel y React, permitiendo construir aplicaciones de una sola página (SPA) sin necesidad de una API separada.
-- **Laravel**: Framework de PHP utilizado para manejar la lógica del servidor y las operaciones de base de datos.
-- **Tailwind CSS**: Framework de CSS utilizado para diseñar la interfaz de usuario.
-- **MySQL / PostgreSQL (Supabase)**: Base de datos de origen y destino para la migración de datos.
-- **Cron de Laravel**: Utilizado para ejecutar tareas programadas, como la actualización de ingresos y gastos recurrentes.
-
-## Estructura del Proyecto
-
-### Modelos
-
-- **Earning**: Representa los ingresos de los usuarios. Puede ser recurrente o único.
-- **Expense**: Representa los gastos de los usuarios. Puede ser recurrente o único.
-- **Box**: Representa una caja de ahorros específica del usuario.
-- **Saving**: Representa los ahorros generales del usuario.
-- **ShopListItem**: Representa los ítems en la lista de compras del usuario.
-
-### Migraciones
-
-Las migraciones se utilizan para definir la estructura de las tablas en la base de datos. Algunas de las migraciones clave incluyen:
-
-- **create_earnings_table**: Define la estructura de la tabla de ingresos.
-- **create_expenses_table**: Define la estructura de la tabla de gastos.
-- **create_boxes_table**: Define la estructura de la tabla de cajas.
-- **create_savings_table**: Define la estructura de la tabla de ahorros.
-- **create_shop_list_items_table**: Define la estructura de la tabla de ítems de la lista de compras.
-
-### Controladores
-
-Los controladores manejan la lógica de la aplicación y las interacciones del usuario. Algunos de los controladores clave incluyen:
-
-- **EarningsController**: Maneja las operaciones relacionadas con los ingresos, como la creación, actualización y eliminación de ingresos.
-- **ExpensesController**: Maneja las operaciones relacionadas con los gastos, como la creación, actualización y eliminación de gastos.
-- **DashboardController**: Muestra el tablero principal con un resumen de las finanzas del usuario.
-- **ShopListController**: Maneja las operaciones relacionadas con la lista de compras, como la creación, actualización y eliminación de ítems de la lista de compras.
-- **ProfileController**: Maneja las operaciones relacionadas con el perfil del usuario, como la edición y eliminación del perfil.
-
-### Rutas
-
-Las rutas definen los endpoints de la aplicación y los controladores que manejan las solicitudes a esos endpoints. Algunas de las rutas clave incluyen:
-
-- **/dashboard**: Muestra el tablero principal.
-- **/earnings**: Muestra y maneja las operaciones relacionadas con los ingresos.
-- **/expenses**: Muestra y maneja las operaciones relacionadas con los gastos.
-- **/shop-list**: Muestra y maneja las operaciones relacionadas con la lista de compras.
-- **/profile**: Muestra y maneja las operaciones relacionadas con el perfil del usuario.
-
-### Plantilla de Autenticación de Laravel
-
-FINANCY utiliza la plantilla de autenticación proporcionada por Laravel para manejar el registro, inicio de sesión y gestión de usuarios. Esta plantilla incluye componentes de React para los formularios de autenticación y utiliza Inertia.js para manejar las transiciones de página sin recargar la página completa.
-
-### Tareas Programadas
-
-La aplicación utiliza el cron de Laravel para ejecutar tareas programadas, como la actualización de ingresos y gastos recurrentes. Estas tareas se definen en el comando `amounts:cron` y se ejecutan periódicamente para mantener actualizadas las finanzas del usuario.
-
-## Migracion a Supabase (PostgreSQL)
-
-Este proyecto incluye un flujo de migracion para mover un dump MySQL (`.sql`) hacia Supabase PostgreSQL sin perder informacion.
-
-### 1. Configuracion Laravel para Supabase
-
-Usa estos valores en tu `.env` de despliegue (no en el repositorio):
-
-```env
-DB_CONNECTION=pgsql
-DB_HOST=YOUR_SESSION_POOLER_HOST.pooler.supabase.com
-DB_PORT=5432
-DB_DATABASE=postgres
-DB_USERNAME=postgres.YOUR_PROJECT_REF
-DB_PASSWORD=your-supabase-db-password
-DB_SSLMODE=require
+```sh
+npm ci
+npm run dev:demo
 ```
 
-Para Render usa los valores de **Connect > Session Pooler** en Supabase. La
-conexion directa `db.PROJECT_REF.supabase.co` usa IPv6 y no es compatible con la
-red de Render. Al usar variables separadas, `DB_PASSWORD` conserva la contrasena
-literal; el percent-encoding solo es necesario dentro de una URL de conexion.
+Abre **http://localhost:5173**. Usuario: `demo@financy.local`, contraseña: `FinancyDemo2026!`.
 
-### 2. Script de migracion incluido
+Esta demo crea PostgreSQL embebido con PGlite **en memoria**, exclusivamente local. No lee las credenciales de Laravel ni conecta a producción. Los datos se reinician al detenerla. El entrypoint de producción no incluye la demo.
 
-Archivo: `scripts/migrate-mysql-dump-to-supabase.ps1`
+## Desarrollo con PostgreSQL
 
-Requisitos:
-
-- Docker Desktop activo.
-- Proyecto Supabase creado.
-- Password de base de datos de Supabase.
-- Dump MySQL en formato `.sql`.
-
-Ejemplo de ejecucion:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\migrate-mysql-dump-to-supabase.ps1 `
-	-DumpPath "C:\ruta\a\financy_backup.sql" `
-	-SupabaseHost "db.TU_PROJECT_REF.supabase.co" `
-	-SupabasePassword "TU_SUPABASE_DB_PASSWORD"
+```sh
+# PowerShell
+Copy-Item apps/api/.env.example apps/api/.env
 ```
 
-Que hace el script:
+Configura `DATABASE_URL` en ese archivo y ejecuta:
 
-- Levanta un MySQL temporal en Docker.
-- Importa tu dump `.sql`.
-- Migra esquema + datos a Supabase con `pgloader`.
-- Preserva identificadores con mayusculas/minusculas (`quote identifiers`) para evitar romper columnas como `NextClaim` y `UpdatedTerm`.
-- Verifica conteo de filas por tabla entre origen y destino.
-- Genera reporte CSV en `storage/logs/supabase-row-count-check-*.csv`.
-
-### 2.1 Alternativa sin Docker (SQL ya generado)
-
-Cuando no hay Docker disponible, puedes usar el SQL de datos ya adaptado para PostgreSQL/Supabase:
-
-- Archivo generado: `database/supabase/financy-data-import.sql`
-- Script generador: `scripts/build-supabase-data-import-from-mysql-dump.ps1`
-
-Regenerar archivo de importacion desde un dump MySQL:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\build-supabase-data-import-from-mysql-dump.ps1 `
-	-InputDumpPath .\u619022423_financy.sql `
-	-OutputSqlPath .\database\supabase\financy-data-import.sql
+```sh
+npm run db:migrate
+npm run dev
 ```
 
-Notas de esta alternativa:
+Usa `http://localhost:5173` para mantener el origen configurado en `APP_URL`. La API escucha en el puerto 3000; Vite reenvía `/api` a NestJS.
 
-- Convierte identificadores MySQL con comillas invertidas a comillas dobles de PostgreSQL.
-- Mantiene columnas sensibles a mayusculas/minusculas (por ejemplo `NextClaim` y `UpdatedTerm`).
-- Reordena inserts para respetar dependencias de claves foraneas.
-- Ajusta secuencias de `id` al final del import.
+## Qué incluye
 
-Para ejecutar en Supabase:
+- Registro, login, sesiones HttpOnly persistentes en PostgreSQL, logout, verificación de correo, recuperación y cambio de contraseña, confirmación de contraseña y eliminación de cuenta.
+- Ingresos y gastos únicos o recurrentes, edición, eliminación, cobro/pago manual anticipado y automático al vencer, historial, etiquetas y búsqueda.
+- Caja y ahorros, cargos distribuidos entre cuentas, transferencias y reversión exacta de los movimientos creados por la nueva API.
+- Compras pendientes, compra con o sin descuento de saldo, regalos, edición y vuelta a pendiente con devolución del importe.
+- Presupuestos mensuales por palabras clave, límite mensual con avisos visuales, dashboard y gráficos basados en datos reales.
+- Reportes filtrados por fechas, cuenta, texto y proyecto; CSV protegido contra fórmulas e impresión/PDF del reporte completo.
+- Reparto de gastos por importes o partes iguales, control de pagos por participante.
+- Conversor USD/Bs/EUR con las fórmulas heredadas, tasas históricas con búsqueda de hasta 7 días previos y fallback oficial DolarVzla opcional.
+- UI en español, adaptable a móvil, formularios con validación, diálogos con foco y Escape, estados vacíos y recuperación de errores.
 
-1. Crea el esquema con migraciones de Laravel apuntando a Supabase (`php artisan migrate --force`).
-2. Ejecuta el contenido de `database/supabase/financy-data-import.sql` en el SQL Editor de Supabase.
+## Estructura
 
-### 3. Recomendaciones de seguridad
-
-- Ejecutar la migracion sobre un proyecto Supabase nuevo o con esquema `public` vacio.
-- Mantener un respaldo adicional del dump original.
-- No versionar credenciales reales en archivos `.env` dentro del repositorio.
-
-### 4. Verificacion en Laravel
-
-Despues de migrar:
-
-```powershell
-php artisan config:clear
-php artisan cache:clear
-php artisan migrate:status
+```text
+apps/api/src/         Controladores, servicios, autenticación y trabajos NestJS
+apps/api/database/    SQL compatible con el esquema PostgreSQL final de Laravel
+apps/api/test/        Pruebas SQL, financieras y HTTP con PGlite
+apps/web/src/         Interfaz React, formularios y estilos
+tests/e2e/           Flujos completos con Playwright
+docs/                Migración, despliegue y contrato de API
+artifacts/           Capturas de escritorio y móvil
+laravel_legacy/      Referencia original, sin modificaciones
 ```
 
-Si `migrate:status` muestra las migraciones historicas, la tabla `migrations` tambien se migro correctamente.
+Los importes se calculan con `decimal.js`; PostgreSQL conserva valores decimales y la API devuelve importes como cadenas. Las escrituras financieras bloquean la fila del usuario dentro de una transacción, serializando operaciones sobre sus cuentas. Todas las consultas financieras filtran por usuario, también cuando hay proyecto.
+
+## Desplegar y migrar
+
+Sigue [la guía de Vercel](docs/DEPLOYMENT.md) y [el procedimiento de migración](docs/MIGRATION.md). Se crean dos proyectos Vercel: API NestJS y frontend Vite, con `/api` reenviado desde el frontend para mantener las cookies en el mismo origen.
+
+La aplicación necesita PostgreSQL y Resend configurados para operar con usuarios reales. Las migraciones se ejecutan explícitamente, nunca durante un cold start. No se ha desplegado ni modificado ninguna base remota.
+
+## Validación
+
+```sh
+npm run build
+npm test
+npx playwright install chromium
+npx playwright test
+npm audit
+```
+
+Las pruebas de backend ejecutan SQL real en PostgreSQL embebido; no sustituyen una prueba de concurrencia con múltiples conexiones contra el PostgreSQL de destino. Playwright verifica el flujo de ingresos, gastos, transferencias, presupuestos, compras, exportación, perfil y navegación móvil. El workflow de CI ejecuta compilación y ambas suites.
+
+El pin de `multer` a 2.3.0 y la referencia al adaptador Nest en la raíz garantizan que npm aplique el override también al árbol de workspaces. No hay endpoints de subida de archivos.

@@ -1,0 +1,264 @@
+import { useState, type FormEvent, type ReactNode } from 'react';
+import { api } from './api';
+export function Form({
+  children,
+  onSubmit,
+  label = 'Guardar',
+  onDone,
+}: {
+  children: ReactNode;
+  onSubmit: (data: any) => Promise<any>;
+  label?: string;
+  onDone: () => void;
+}) {
+  const [error, setError] = useState(''),
+    [busy, setBusy] = useState(false);
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await onSubmit(Object.fromEntries(new FormData(e.currentTarget)));
+      onDone();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <form onSubmit={submit} className="form">
+      {children}
+      {error && (
+        <div className="error" role="alert">
+          {error}
+        </div>
+      )}
+      <button disabled={busy} className="primary" type="submit">
+        {busy ? 'Guardando…' : label}
+      </button>
+    </form>
+  );
+}
+export function Currency({ value = '$' }: { value?: string }) {
+  return (
+    <label>
+      Moneda
+      <select name="currency" defaultValue={value}>
+        <option value="$">USD · Dólares</option>
+        <option value="bs">Bs · Tasa paralelo</option>
+        <option value="VES_BCV">Bs · Tasa BCV</option>
+        <option value="$bcv">USD indexado al BCV</option>
+        <option value="$parallel">Bs indexado al paralelo</option>
+        <option value="€">EUR · Conversión legado</option>
+        <option value="EUR">EUR · Tasa oficial</option>
+        <option value="EUR_PARALLEL">EUR · Tasa paralelo</option>
+      </select>
+    </label>
+  );
+}
+export function Provider({
+  value = 'box',
+  name = 'provider',
+  auto = true,
+}: {
+  value?: string;
+  name?: string;
+  auto?: boolean;
+}) {
+  return (
+    <label>
+      Cuenta
+      <select name={name} defaultValue={value}>
+        <option value="box">Caja · Disponible</option>
+        <option value="savings">Ahorros</option>
+        {auto && <option value="auto">Automática · Mayor saldo</option>}
+      </select>
+    </label>
+  );
+}
+export function Amount({ value }: { value?: string }) {
+  return (
+    <label>
+      Importe
+      <input
+        name="amount"
+        type="number"
+        min="0.01"
+        max="9999999999.99"
+        step="0.01"
+        placeholder="0,00"
+        defaultValue={value}
+        required
+      />
+    </label>
+  );
+}
+export function EntryForm({ type, item, done }: { type: string; item?: any; done: () => void }) {
+  const [recurrence, setRecurrence] = useState(
+    item ? (item.claim_day ? 'monthly' : item.term ? 'days' : 'one_time') : 'one_time',
+  );
+  return (
+    <Form
+      onDone={done}
+      onSubmit={(v) =>
+        api('/entries/' + type + (item ? '/' + item.id : ''), item ? 'PATCH' : 'POST', {
+          ...v,
+          term: v.term ? Number(v.term) : null,
+          claim_day: v.claim_day ? Number(v.claim_day) : null,
+          project_id: v.project_id ? Number(v.project_id) : null,
+          auto_claim: v.auto_claim === 'on',
+        })
+      }
+    >
+      <label>
+        Descripción
+        <input
+          name="description"
+          autoFocus
+          defaultValue={item?.description}
+          placeholder={
+            type === 'earnings' ? 'Ej. Salario de septiembre' : 'Ej. Compra del supermercado'
+          }
+          maxLength={500}
+          required
+        />
+      </label>
+      <div className="form-grid">
+        <Amount value={item?.amount} />
+        <Currency value={item?.currency} />
+      </div>
+      <Provider value={item?.provider} />
+      <label>
+        Frecuencia
+        <select
+          name="recurrence_type"
+          value={recurrence}
+          onChange={(e) => setRecurrence(e.target.value)}
+        >
+          <option value="one_time" disabled={!!item && (!!item.term || !!item.claim_day)}>
+            Una sola vez
+          </option>
+          <option value="days" disabled={!!item && !item.term && !item.claim_day}>
+            Cada cierto número de días
+          </option>
+          <option value="monthly" disabled={!!item && !item.term && !item.claim_day}>
+            Un día de cada mes
+          </option>
+        </select>
+      </label>
+      {recurrence === 'days' && (
+        <label>
+          Intervalo en días
+          <input
+            name="term"
+            type="number"
+            min="1"
+            max="3650"
+            defaultValue={item?.term || 15}
+            required
+          />
+        </label>
+      )}
+      {recurrence === 'monthly' && (
+        <label>
+          Día del mes
+          <input
+            name="claim_day"
+            type="number"
+            min="1"
+            max="31"
+            defaultValue={item?.claim_day || 1}
+            required
+          />
+          <small>Si el mes es más corto, se usa su último día.</small>
+        </label>
+      )}
+      {recurrence !== 'one_time' && (
+        <label className="checkbox">
+          <input type="checkbox" name="auto_claim" defaultChecked={item?.auto_claim ?? false} />{' '}
+          Registrar automáticamente al vencer
+        </label>
+      )}
+      <label>
+        Etiquetas
+        <input
+          aria-label="Etiquetas"
+          name="slug"
+          defaultValue={item?.slug}
+          placeholder="Ej. hogar alimentación mercado"
+        />
+        <small>Vinculan tus gastos con las categorías del presupuesto.</small>
+      </label>
+      <details>
+        <summary>Asociar a un proyecto</summary>
+        <label>
+          ID del proyecto
+          <input name="project_id" type="number" min="1" defaultValue={item?.project_id} />
+          <small>Los movimientos de proyecto no afectan tus cuentas personales.</small>
+        </label>
+      </details>
+      <p className="form-note">
+        {recurrence === 'one_time'
+          ? 'El saldo se actualizará al guardar.'
+          : 'El saldo se actualizará al registrar cada vencimiento.'}
+      </p>
+    </Form>
+  );
+}
+export function ShopForm({ item, done }: { item?: any; done: () => void }) {
+  return (
+    <Form
+      onDone={done}
+      onSubmit={(v) => api('/shopping' + (item ? '/' + item.id : ''), item ? 'PATCH' : 'POST', v)}
+    >
+      <label>
+        ¿Qué quieres comprar?
+        <input
+          name="description"
+          autoFocus
+          defaultValue={item?.description}
+          maxLength={500}
+          required
+        />
+      </label>
+      <div className="form-grid">
+        <Amount value={item?.amount} />
+        <Currency />
+      </div>
+    </Form>
+  );
+}
+export function BudgetForm({ month, item, done }: { month: string; item?: any; done: () => void }) {
+  return (
+    <Form
+      onDone={done}
+      onSubmit={(v) =>
+        api('/budgets' + (item ? '/' + item.id : ''), item ? 'PATCH' : 'POST', { ...v, month })
+      }
+    >
+      <label>
+        Nombre de la categoría
+        <input
+          name="name"
+          autoFocus
+          placeholder="Ej. Alimentación"
+          defaultValue={item?.name}
+          maxLength={120}
+          required
+        />
+      </label>
+      <Amount value={item?.amount} />
+      <label>
+        Palabras clave
+        <input
+          name="slug"
+          placeholder="comida mercado alimentación"
+          defaultValue={item?.slug}
+          required
+        />
+        <small>Se sumarán los gastos que compartan estas etiquetas.</small>
+      </label>
+    </Form>
+  );
+}

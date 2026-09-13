@@ -1,0 +1,7 @@
+laravel_legacy
+node_modules
+dist
+.local
+package-lock.json
+artifacts
+test-results
