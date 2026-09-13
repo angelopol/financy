@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { createApp } from '../src/app';
+import { createApp } from '../apps/api/src/app';
 
 let handler: ((req: any, res: any) => void) | null = null;
 

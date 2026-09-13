@@ -60,7 +60,7 @@ Los importes se calculan con `decimal.js`; PostgreSQL conserva valores decimales
 
 ## Desplegar y migrar
 
-Sigue [la guía de Vercel](docs/DEPLOYMENT.md) y [el procedimiento de migración](docs/MIGRATION.md). Se crean dos proyectos Vercel: API NestJS y frontend Vite, con `/api` reenviado desde el frontend para mantener las cookies en el mismo origen.
+Sigue [la guía de Vercel](docs/DEPLOYMENT.md) y [el procedimiento de migración](docs/MIGRATION.md). Un solo proyecto Vercel sirve el frontend Vite como archivos estáticos y la API NestJS como función serverless en `/api`, en el mismo dominio, sin proxy entre proyectos.
 
 La aplicación necesita PostgreSQL y Resend configurados para operar con usuarios reales. Las migraciones se ejecutan explícitamente, nunca durante un cold start. No se ha desplegado ni modificado ninguna base remota.
 
