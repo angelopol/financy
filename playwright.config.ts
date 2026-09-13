@@ -11,8 +11,11 @@ export default defineConfig({
   },
   webServer: {
     command: 'npm run dev:demo',
-    url: 'http://localhost:5173',
+    // Vite starts almost instantly but the demo API seeds data and calls
+    // app.listen() a bit later; polling /api/health (proxied by Vite) waits
+    // for both instead of racing tests against a not-yet-listening API.
+    url: 'http://localhost:5173/api/health',
     reuseExistingServer: !process.env.CI,
-    timeout: 60000,
+    timeout: 90000,
   },
 });
