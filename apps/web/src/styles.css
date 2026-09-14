@@ -596,20 +596,6 @@ main {
   font-weight: 650;
   margin-top: 6px;
 }
-.metric-card p {
-  font-size: 9px;
-  color: #a0a794;
-  margin-top: 7px;
-}
-.metric-line {
-  height: 3px;
-  background: linear-gradient(90deg, #eed8c9 38%, #faf4ef 38%);
-  margin-top: 20px;
-  border-radius: 4px;
-}
-.metric-line.green {
-  background: linear-gradient(90deg, #c3d6ab 58%, #f0f5e9 58%);
-}
 .dashboard-middle {
   display: grid;
   grid-template-columns: 2.35fr 1fr;
@@ -1852,9 +1838,6 @@ dialog::backdrop {
   .metric-card .card-label {
     font-size: 9px;
   }
-  .metric-card p {
-    font-size: 8px;
-  }
   .heading-actions {
     gap: 7px;
   }
@@ -1913,9 +1896,6 @@ dialog::backdrop {
   }
   .metric-card .card-label {
     font-size: 11px;
-  }
-  .metric-card p {
-    font-size: 10px;
   }
   .page-heading {
     align-items: flex-start;
@@ -2088,10 +2068,6 @@ dialog::backdrop {
   .metric-card h2 {
     margin-top: 23px;
   }
-  .metric-card p {
-    font-size: 8px;
-    line-height: 1.5;
-  }
   .card-label > span {
     height: 24px;
     width: 24px;
@@ -2105,9 +2081,6 @@ dialog::backdrop {
   }
   .balance-caption {
     font-size: 8px;
-  }
-  .metric-line {
-    margin-top: 21px;
   }
   .dashboard-middle {
     margin-top: 16px;
@@ -2450,7 +2423,6 @@ nav,
 [data-theme='dark'] .today,
 [data-theme='dark'] .user-card small,
 [data-theme='dark'] .panel-head p,
-[data-theme='dark'] .metric-card p,
 [data-theme='dark'] .entry-name small,
 [data-theme='dark'] .upcoming div small,
 [data-theme='dark'] .rate-strip,

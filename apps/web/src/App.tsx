@@ -432,14 +432,12 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                       value={data.income}
                       icon={<ArrowDownLeft size={20} />}
                       positive
-                      note="Lo que ha entrado a tus cuentas"
                       upcoming={data.projected_income}
                     />
                     <Metric
                       title="Gastos del mes"
                       value={data.expenses}
                       icon={<ArrowUpRight size={20} />}
-                      note="Lo que has destinado este mes"
                       upcoming={data.projected_expenses}
                     />
                     <Metric
@@ -447,7 +445,6 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                       value={data.net}
                       icon={<PiggyBank size={20} />}
                       positive
-                      note="La diferencia entre ingresos y gastos"
                       upcoming={data.projected}
                       upcomingLabel="neto por recurrencias pendientes"
                     />
@@ -1077,7 +1074,6 @@ function Metric({
   title,
   value,
   icon,
-  note,
   positive = false,
   upcoming,
   upcomingLabel = 'próximos',
@@ -1085,7 +1081,6 @@ function Metric({
   title: string;
   value: string;
   icon: ReactNode;
-  note: string;
   positive?: boolean;
   upcoming?: string | null;
   upcomingLabel?: string;
@@ -1103,8 +1098,6 @@ function Metric({
           {upcomingValue >= 0 ? '+' : '−'} {usd(Math.abs(upcomingValue))} {upcomingLabel}
         </small>
       )}
-      <p>{note}</p>
-      <div className={'metric-line ' + (positive ? 'green' : '')} />
     </section>
   );
 }
