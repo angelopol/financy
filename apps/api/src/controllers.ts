@@ -173,13 +173,24 @@ export class FinanceController {
   @Delete('shopping/:id') shopDelete(@Req() r: AuthRequest, @Param('id') id: string) {
     return this.p.shopAction(r.user.id, parse(idSchema, id), 'delete', {});
   }
-  @Post('shopping/:id/:action') shopAction(
+  @Post('shopping/:id/:action') async shopAction(
     @Req() r: AuthRequest,
     @Param('id') id: string,
     @Param('action') action: string,
     @Body() b: unknown,
   ) {
-    return this.p.shopAction(r.user.id, parse(idSchema, id), action, b);
+    const result = await this.p.shopAction(r.user.id, parse(idSchema, id), action, b);
+    if (action === 'deposit' || action === 'withdraw')
+      await this.activity.log(
+        r.user.id,
+        'user',
+        action === 'deposit' ? 'shop_saving_deposit' : 'shop_saving_withdraw',
+        result.id,
+        action === 'deposit'
+          ? `Abono de ${result.amount} $ para "${result.description}"`
+          : `Retiro de ${result.amount} $ del ahorro para "${result.description}"`,
+      );
+    return result;
   }
   @Get('budgets') budgets(@Req() r: AuthRequest, @Query('month') month?: string) {
     return this.p.budgets(r.user.id, month ?? now().toFormat('yyyy-MM'));

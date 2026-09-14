@@ -284,6 +284,13 @@ export class FinanceService {
         table === 'earnings' ? 'earning' : 'expense',
         id,
       ]);
+      // A deleted deposit/withdraw expense or earning must stop counting toward its
+      // shopping item's saved amount, whether removed directly or via Activity's undo
+      // (which also calls remove()).
+      await sql.query('DELETE FROM financy_shop_savings WHERE reference_type=$1 AND reference_id=$2', [
+        table,
+        id,
+      ]);
       await sql.query(`DELETE FROM ${table} WHERE id=$1 AND "user"=$2`, [id, user]);
       return { ok: true };
     };

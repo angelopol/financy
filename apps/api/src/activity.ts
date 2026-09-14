@@ -47,7 +47,7 @@ export class ActivityService {
     }
     const rows = (
       await this.db.query(
-        `SELECT id,source,kind,summary,created_at,undone_at,(undone_at IS NULL AND kind IN ('earning_created','expense_created','shopping_created','budget_created','transfer','shopping_purchased','limit_updated')) AS can_undo FROM financy_activity WHERE ${where} ORDER BY id DESC LIMIT 21`,
+        `SELECT id,source,kind,summary,created_at,undone_at,(undone_at IS NULL AND kind IN ('earning_created','expense_created','shopping_created','budget_created','transfer','shopping_purchased','limit_updated','shop_saving_deposit','shop_saving_withdraw')) AS can_undo FROM financy_activity WHERE ${where} ORDER BY id DESC LIMIT 21`,
         params,
       )
     ).rows;
@@ -86,6 +86,12 @@ export class ActivityService {
           break;
         case 'limit_updated':
           await this.auth.updateMonthlyLimit(user, payload.previous_limit);
+          break;
+        case 'shop_saving_deposit':
+          await this.finance.remove(user, 'expenses', row.target_id);
+          break;
+        case 'shop_saving_withdraw':
+          await this.finance.remove(user, 'earnings', row.target_id);
           break;
         default:
           throw new ConflictException('Esta acción no se puede deshacer.');

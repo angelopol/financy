@@ -8,6 +8,7 @@ import {
 import { z } from 'zod';
 import Decimal from 'decimal.js';
 import { FinanceService } from './finance';
+import type { Sql } from './database';
 import {
   amountSchema,
   currencySchema,
@@ -46,11 +47,16 @@ export class PlanningService {
       )
     ).rows[0];
     const result = await this.finance.db.query(
-      'SELECT * FROM shop_list_items WHERE "user"=$1 ORDER BY status,created_at DESC LIMIT 20 OFFSET $2',
+      `SELECT s.*,COALESCE(sv.saved,0) AS saved FROM shop_list_items s
+       LEFT JOIN (
+         SELECT shop_list_item_id,SUM(CASE WHEN direction='deposit' THEN amount ELSE -amount END) AS saved
+         FROM financy_shop_savings GROUP BY shop_list_item_id
+       ) sv ON sv.shop_list_item_id=s.id
+       WHERE s."user"=$1 ORDER BY s.status,s.created_at DESC LIMIT 20 OFFSET $2`,
       [user, (v.page - 1) * 20],
     );
     return {
-      items: result.rows,
+      items: result.rows.map((r) => ({ ...r, saved: money(r.saved) })),
       total: Number(total.count),
       pending_count: Number(pending.count),
       pending_amount: pending.amount,
@@ -82,6 +88,16 @@ export class PlanningService {
       ).rows[0];
     });
   }
+  // Net of every deposit/withdraw ledgered against this item; deleting (or undoing) the
+  // underlying expense/earning removes its ledger row too, so this always reflects what's
+  // actually still set aside.
+  private async savedAmount(sql: Sql, itemId: string) {
+    const r = await sql.query(
+      `SELECT COALESCE(SUM(CASE WHEN direction='deposit' THEN amount ELSE -amount END),0) AS saved FROM financy_shop_savings WHERE shop_list_item_id=$1`,
+      [itemId],
+    );
+    return new Decimal(r.rows[0].saved);
+  }
   async shopAction(user: string, id: string, action: string, body: unknown) {
     return this.finance.db.transaction(async (sql) => {
       await this.finance.lock(sql, user);
@@ -101,7 +117,49 @@ export class PlanningService {
       } else if (action === 'delete') {
         if (item.status === 'purchased' && !item.not_discount)
           throw new ConflictException('Devuelve el artículo a pendiente antes de eliminarlo');
+        if ((await this.savedAmount(sql, id)).gt(0))
+          throw new ConflictException('Retira lo abonado antes de eliminar este artículo');
         await sql.query('DELETE FROM shop_list_items WHERE id=$1', [id]);
+      } else if (action === 'deposit' || action === 'withdraw') {
+        if (item.status !== 'pending')
+          throw new ConflictException(
+            action === 'deposit'
+              ? 'Solo puedes abonar a artículos pendientes'
+              : 'Solo puedes retirar de artículos pendientes',
+          );
+        const v = parse(
+          z.object({ amount: amountSchema, provider: z.enum(['box', 'savings']) }).strict(),
+          body,
+        );
+        const saved = await this.savedAmount(sql, id);
+        if (action === 'withdraw' && new Decimal(v.amount).gt(saved))
+          throw new BadRequestException('No puedes retirar más de lo que has abonado');
+        const table = action === 'deposit' ? 'expenses' : 'earnings';
+        const row = await this.finance.create(sql, user, table, {
+          description:
+            action === 'deposit'
+              ? `Abono a "${item.description}"`
+              : `Plata extraída de abono de "${item.description}"`,
+          amount: v.amount,
+          provider: v.provider,
+          currency: '$',
+          slug: item.description,
+          recurrence_type: 'one_time',
+          auto_claim: false,
+          project_id: null,
+        });
+        await sql.query(
+          `INSERT INTO financy_shop_savings(shop_list_item_id,user_id,direction,amount,reference_type,reference_id) VALUES($1,$2,$3,$4,$5,$6)`,
+          [id, user, action === 'deposit' ? 'deposit' : 'withdraw', v.amount, table, row.id],
+        );
+        return {
+          ok: true,
+          table,
+          id: row.id,
+          amount: v.amount,
+          description: item.description,
+          saved: money(action === 'deposit' ? saved.plus(v.amount) : saved.minus(v.amount)),
+        };
       } else if (action === 'purchase' || action === 'gift') {
         if (item.status !== 'pending') throw new ConflictException('La compra ya está registrada');
         const v =
@@ -117,23 +175,27 @@ export class PlanningService {
               );
         let provider = null;
         if (!v.not_discount) {
-          const e = await this.finance.create(
-            sql,
-            user,
-            'expenses',
-            {
-              description: item.description,
-              amount: v.amount,
-              provider: v.provider,
-              currency: '$',
-              slug: item.description,
-              recurrence_type: 'one_time',
-              auto_claim: false,
-              project_id: null,
-            },
-            { shop_list_item_id: id },
-          );
-          provider = e.provider;
+          const saved = await this.savedAmount(sql, id);
+          const remaining = Decimal.max(0, new Decimal(v.amount).minus(saved));
+          if (remaining.gt(0)) {
+            const e = await this.finance.create(
+              sql,
+              user,
+              'expenses',
+              {
+                description: item.description,
+                amount: remaining.toFixed(2),
+                provider: v.provider,
+                currency: '$',
+                slug: item.description,
+                recurrence_type: 'one_time',
+                auto_claim: false,
+                project_id: null,
+              },
+              { shop_list_item_id: id },
+            );
+            provider = e.provider;
+          }
         }
         await sql.query(
           "UPDATE shop_list_items SET status='purchased',amount=$1,provider=$2,not_discount=$3,updated_at=now() WHERE id=$4",

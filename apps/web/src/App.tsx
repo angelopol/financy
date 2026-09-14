@@ -948,7 +948,9 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                             <strong>{e.description}</strong>
                             <small>
                               {e.status === 'pending'
-                                ? 'Por comprar'
+                                ? Number(e.saved) > 0
+                                  ? `Por comprar · ${Math.round((Number(e.saved) / Number(e.amount)) * 100)}% ahorrado (${usd(e.saved)} de ${usd(e.amount)})`
+                                  : 'Por comprar'
                                 : e.not_discount
                                   ? 'Recibido sin descuento de saldo'
                                   : 'Comprado · ' + accountLabel(e.provider)}
@@ -980,12 +982,30 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                                             <input type="checkbox" name="not_discount" /> No
                                             descontar de mis cuentas
                                           </label>
+                                          {Number(e.saved) > 0 && (
+                                            <p className="form-note">
+                                              Ya abonaste {usd(e.saved)} para este artículo; al
+                                              confirmar, solo se descontará la diferencia.
+                                            </p>
+                                          )}
                                         </Form>
                                       ),
                                     })
                                   }
                                 >
                                   Comprar
+                                </button>
+                                <button
+                                  className="icon-button"
+                                  aria-label={'Ahorrar para ' + e.description}
+                                  onClick={() =>
+                                    setModal({
+                                      title: 'Ahorro para "' + e.description + '"',
+                                      content: <SavingsModal item={e} done={done} />,
+                                    })
+                                  }
+                                >
+                                  <PiggyBank size={16} />
                                 </button>
                                 <button
                                   className="icon-button"
@@ -1746,6 +1766,71 @@ function PushSettings({ notify }: { notify: (s: string) => void }) {
         </>
       )}
     </section>
+  );
+}
+function SavingsModal({ item, done }: { item: any; done: () => void }) {
+  const [tab, setTab] = useState<'deposit' | 'withdraw'>('deposit');
+  const saved = Number(item.saved || 0);
+  const target = Number(item.amount);
+  const percent = target > 0 ? Math.min(100, (saved / target) * 100) : 0;
+  return (
+    <div className="savings-modal">
+      <div
+        className="savings-graphic"
+        style={{ '--progress': `${percent}%` } as React.CSSProperties}
+      >
+        <div>
+          <small>AHORRADO</small>
+          <strong>
+            {Math.round(percent)}
+            <span>%</span>
+          </strong>
+        </div>
+      </div>
+      <div className="savings-values">
+        <strong>{usd(saved)}</strong>
+        <span>de {usd(target)}</span>
+      </div>
+      <div className="savings-tabs">
+        <button
+          type="button"
+          className={tab === 'deposit' ? 'selected' : ''}
+          onClick={() => setTab('deposit')}
+        >
+          Abonar
+        </button>
+        <button
+          type="button"
+          className={tab === 'withdraw' ? 'selected' : ''}
+          disabled={saved <= 0}
+          onClick={() => setTab('withdraw')}
+        >
+          Retirar
+        </button>
+      </div>
+      {tab === 'deposit' ? (
+        <Form
+          key="deposit"
+          onDone={done}
+          label="Confirmar abono"
+          onSubmit={(v) => api('/shopping/' + item.id + '/deposit', 'POST', v)}
+        >
+          <Provider auto={false} />
+          <Amount />
+        </Form>
+      ) : (
+        <Form
+          key="withdraw"
+          onDone={done}
+          label="Confirmar retiro"
+          onSubmit={(v) => api('/shopping/' + item.id + '/withdraw', 'POST', v)}
+        >
+          <Provider auto={false} />
+          <Amount />
+          <p className="form-note">Puedes retirar hasta {usd(saved)}.</p>
+        </Form>
+      )}
+    </div>
   );
 }
 function SplitForm({ item, done }: { item: any; done: () => void }) {

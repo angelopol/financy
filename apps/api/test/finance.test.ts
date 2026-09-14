@@ -109,6 +109,84 @@ test('purchase is idempotent, pending restores allocation, gift creates no expen
   await p.shopAction(u, item.id, 'gift', {});
   assert.equal((await f.list(u, 'expenses', {})).total, 0);
 });
+test('depositing toward a shopping goal books an expense and tracks the saved percentage', async () => {
+  const u = await user(200, 200);
+  const item = await p.shopSave(u, { description: 'Bicicleta', amount: '100' });
+  const first = await p.shopAction(u, item.id, 'deposit', { amount: '30', provider: 'box' });
+  assert.equal(first.saved, '30.00');
+  assert.equal(first.table, 'expenses');
+  assert.deepEqual(await f.balances(db, u), { box: '170.00', savings: '200.00' });
+  const [expense] = (await f.list(u, 'expenses', {})).items;
+  assert.match(expense.description, /Abono a "Bicicleta"/);
+  const second = await p.shopAction(u, item.id, 'deposit', { amount: '20', provider: 'savings' });
+  assert.equal(second.saved, '50.00');
+  assert.deepEqual(await f.balances(db, u), { box: '170.00', savings: '180.00' });
+  const [listed] = (await p.shopList(u, {})).items;
+  assert.equal(listed.saved, '50.00');
+  // Can't deposit toward, or withdraw from, an item that isn't pending anymore.
+  await p.shopAction(u, item.id, 'gift', {});
+  await assert.rejects(p.shopAction(u, item.id, 'deposit', { amount: '5', provider: 'box' }));
+});
+test('withdrawing from a shopping goal books an income, capped at what was actually saved', async () => {
+  const u = await user(200, 200);
+  const item = await p.shopSave(u, { description: 'Cámara', amount: '100' });
+  await p.shopAction(u, item.id, 'deposit', { amount: '40', provider: 'box' });
+  await assert.rejects(p.shopAction(u, item.id, 'withdraw', { amount: '41', provider: 'box' }));
+  const result = await p.shopAction(u, item.id, 'withdraw', { amount: '15', provider: 'savings' });
+  assert.equal(result.saved, '25.00');
+  assert.equal(result.table, 'earnings');
+  assert.deepEqual(await f.balances(db, u), { box: '160.00', savings: '215.00' });
+  const [earning] = (await f.list(u, 'earnings', {})).items;
+  assert.match(earning.description, /Plata extraída de abono de "Cámara"/);
+});
+test('deleting or undoing a deposit/withdraw reverses it and updates the saved amount', async () => {
+  const u = await user(200, 200);
+  const item = await p.shopSave(u, { description: 'Consola', amount: '100' });
+  const deposit = await p.shopAction(u, item.id, 'deposit', { amount: '40', provider: 'box' });
+  assert.equal((await p.shopList(u, {})).items[0].saved, '40.00');
+  // Reversal by directly deleting the underlying expense.
+  await f.remove(u, 'expenses', deposit.id);
+  assert.equal((await p.shopList(u, {})).items[0].saved, '0.00');
+  assert.deepEqual(await f.balances(db, u), { box: '200.00', savings: '200.00' });
+  // Reversal via Activity's undo, for both a deposit and a withdrawal.
+  const redeposit = await p.shopAction(u, item.id, 'deposit', { amount: '40', provider: 'box' });
+  await activity.log(u, 'user', 'shop_saving_deposit', redeposit.id, 'Abono de prueba');
+  const withdrawal = await p.shopAction(u, item.id, 'withdraw', { amount: '10', provider: 'box' });
+  await activity.log(u, 'user', 'shop_saving_withdraw', withdrawal.id, 'Retiro de prueba');
+  assert.equal((await p.shopList(u, {})).items[0].saved, '30.00');
+  const rows = (await activity.list(u)).activity;
+  const withdrawActivity = rows.find((r: any) => r.kind === 'shop_saving_withdraw');
+  const depositActivity = rows.find((r: any) => r.kind === 'shop_saving_deposit');
+  assert.equal(withdrawActivity.can_undo, true);
+  await activity.undo(u, withdrawActivity.id);
+  assert.equal((await p.shopList(u, {})).items[0].saved, '40.00');
+  await activity.undo(u, depositActivity.id);
+  assert.equal((await p.shopList(u, {})).items[0].saved, '0.00');
+  assert.deepEqual(await f.balances(db, u), { box: '200.00', savings: '200.00' });
+  // A pending item with savings can't be deleted until the savings are withdrawn.
+  await p.shopAction(u, item.id, 'deposit', { amount: '10', provider: 'box' });
+  await assert.rejects(p.shopAction(u, item.id, 'delete', {}));
+  await p.shopAction(u, item.id, 'withdraw', { amount: '10', provider: 'box' });
+  await p.shopAction(u, item.id, 'delete', {});
+});
+test('purchasing deducts only the remaining balance after prior deposits, and nothing if fully saved', async () => {
+  const u = await user(500, 0);
+  const partial = await p.shopSave(u, { description: 'Laptop', amount: '100' });
+  await p.shopAction(u, partial.id, 'deposit', { amount: '60', provider: 'box' });
+  await p.shopAction(u, partial.id, 'purchase', { amount: '100', provider: 'box' });
+  // 500 - 60 (deposit) - 40 (remaining at purchase) = 400
+  assert.deepEqual(await f.balances(db, u), { box: '400.00', savings: '0.00' });
+  const purchased = (await p.shopList(u, {})).items.find((i: any) => i.id === partial.id);
+  assert.equal(purchased.status, 'purchased');
+
+  const full = await p.shopSave(u, { description: 'Teclado', amount: '50' });
+  await p.shopAction(u, full.id, 'deposit', { amount: '50', provider: 'box' });
+  const beforePurchase = await f.balances(db, u);
+  await p.shopAction(u, full.id, 'purchase', { amount: '50', provider: 'box' });
+  // Fully covered by prior deposits: purchasing must not charge anything more.
+  assert.deepEqual(await f.balances(db, u), beforePurchase);
+  assert.equal((await f.list(u, 'expenses', { q: 'Teclado' })).total, 1);
+});
 test('not_discount purchase leaves both accounts unchanged', async () => {
   const u = await user(75, 25);
   const item = await p.shopSave(u, { description: 'Regalo', amount: '20' });
