@@ -398,6 +398,12 @@ export class FinanceService {
       pages: Math.ceil(Number(total.count) / 20),
     };
   }
+  async accountBalances(user: string) {
+    return this.db.transaction(async (sql) => {
+      await this.lock(sql, user);
+      return this.balances(sql, user);
+    });
+  }
   async dashboard(user: string, month = now().toFormat('yyyy-MM')) {
     return this.db.transaction(async (sql) => {
       await this.lock(sql, user);

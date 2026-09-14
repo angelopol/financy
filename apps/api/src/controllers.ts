@@ -35,6 +35,9 @@ export class FinanceController {
   @Get('dashboard') dashboard(@Req() r: AuthRequest, @Query('month') m?: string) {
     return this.f.dashboard(r.user.id, parse(monthSchema, m ?? now().toFormat('yyyy-MM')));
   }
+  @Get('accounts/balances') balances(@Req() r: AuthRequest) {
+    return this.f.accountBalances(r.user.id);
+  }
   @Get('rates') rates(@Query('date') date?: string) {
     return this.f.rates.get(date ? parse(z.iso.date(), date) : undefined);
   }

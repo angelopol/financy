@@ -1,5 +1,5 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
-import { api, suggestTags } from './api';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { api, suggestTags, usd } from './api';
 export function Form({
   children,
   onSubmit,
@@ -66,12 +66,22 @@ export function Provider({
   auto?: boolean;
   credit?: boolean;
 }) {
+  const [balances, setBalances] = useState<{ box: string; savings: string } | null>(null);
+  useEffect(() => {
+    let active = true;
+    api('/accounts/balances')
+      .then((b) => active && setBalances(b))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
   return (
     <label>
       Cuenta
       <select name={name} defaultValue={value}>
-        <option value="box">Caja · Disponible</option>
-        <option value="savings">Ahorros</option>
+        <option value="box">Caja · Disponible{balances ? ' · ' + usd(balances.box) : ''}</option>
+        <option value="savings">Ahorros{balances ? ' · ' + usd(balances.savings) : ''}</option>
         {auto && (
           <option value="auto">
             {credit ? 'Automática · Mayor saldo' : 'Automática · Menor saldo'}
