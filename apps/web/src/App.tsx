@@ -475,6 +475,7 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                       </div>
                       <FlowChart rows={data.trend} month={month} />
                     </section>
+                    <div className="dashboard-side-stack">
                     <section className="panel limit-panel">
                       <div className="panel-head">
                         <h2>Tu límite mensual</h2>
@@ -518,6 +519,8 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                         Ajustar mi límite <ArrowRight size={14} />
                       </Link>
                     </section>
+                    <QuickConverter rates={rates} />
+                    </div>
                   </div>
                   <div className="dashboard-bottom">
                     <section className="panel">
@@ -1141,6 +1144,80 @@ function NotificationsModal({ close, navigate }: { close: () => void; navigate: 
         )
       )}
     </div>
+  );
+}
+function QuickConverter({ rates }: { rates: any }) {
+  const [open, setOpen] = useState(false),
+    [currency, setCurrency] = useState<'bcv' | 'eur'>('bcv'),
+    [amount, setAmount] = useState(''),
+    [result, setResult] = useState<number | null>(null);
+  function calculate(e: React.FormEvent) {
+    e.preventDefault();
+    const n = Number(amount.replace(',', '.'));
+    const rate = currency === 'eur' ? rates?.euro : rates?.bcv;
+    setResult(Number.isFinite(n) && n > 0 && rate ? n * rate : null);
+  }
+  return (
+    <section className="panel quick-converter">
+      <button
+        type="button"
+        className="quick-converter-toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span>
+          <Calculator size={16} /> Calcular
+        </span>
+        <ChevronDown size={16} className={open ? 'open' : ''} />
+      </button>
+      {open && (
+        <form className="form quick-converter-form" onSubmit={calculate}>
+          <div className="form-grid">
+            <label>
+              Moneda
+              <select
+                value={currency}
+                onChange={(e) => {
+                  setCurrency(e.target.value as 'bcv' | 'eur');
+                  setResult(null);
+                }}
+              >
+                <option value="bcv">Dólar BCV</option>
+                <option value="eur">Euro BCV</option>
+              </select>
+            </label>
+            <label>
+              Monto
+              <input
+                aria-label="Monto a convertir"
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setResult(null);
+                }}
+                placeholder="0,00"
+              />
+            </label>
+          </div>
+          <button className="primary" type="submit" disabled={!rates}>
+            Calcular
+          </button>
+          {result != null && (
+            <p className="quick-converter-result">
+              {new Intl.NumberFormat('es-VE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              }).format(result)}{' '}
+              Bs
+            </p>
+          )}
+          <Link className="text-link" to="/calculator">
+            Conversor avanzado <ArrowRight size={14} />
+          </Link>
+        </form>
+      )}
+    </section>
   );
 }
 function Metric({

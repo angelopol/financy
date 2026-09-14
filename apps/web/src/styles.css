@@ -809,6 +809,53 @@ main {
   margin: 12px 0 18px;
   font-size: 9px;
 }
+.dashboard-side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.quick-converter {
+  padding: 18px 23px;
+}
+.quick-converter-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 12px;
+  font-weight: 650;
+  color: #4c6b40;
+}
+.quick-converter-toggle span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.quick-converter-toggle svg:last-child {
+  transition: transform 0.15s ease;
+  color: #99a891;
+}
+.quick-converter-toggle svg:last-child.open {
+  transform: rotate(180deg);
+}
+.quick-converter-form {
+  margin-top: 16px;
+}
+.quick-converter-form .form-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.quick-converter-result {
+  background: #eff5e6;
+  border-radius: 8px;
+  padding: 11px 14px;
+  font-weight: 700;
+  font-size: 15px;
+  text-align: center;
+}
+.quick-converter-form > .text-link {
+  justify-content: center;
+}
 .dashboard-bottom {
   display: grid;
   grid-template-columns: 2.35fr 1fr;
@@ -2425,6 +2472,7 @@ nav,
 [data-theme='dark'] .connection-banner,
 [data-theme='dark'] .report-total,
 [data-theme='dark'] .conversion-result,
+[data-theme='dark'] .quick-converter-result,
 [data-theme='dark'] .notice {
   background: #1b2c22;
   border-color: #2c4434;
