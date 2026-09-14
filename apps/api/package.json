@@ -26,6 +26,7 @@
     "reflect-metadata": "^0.2.2",
     "resend": "^6.28.0",
     "rxjs": "^7.8.2",
+    "web-push": "^3.6.7",
     "zod": "^4.1.0"
   },
   "devDependencies": {
@@ -35,6 +36,7 @@
     "@types/luxon": "^3.7.1",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.15.5",
+    "@types/web-push": "^3.6.4",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }

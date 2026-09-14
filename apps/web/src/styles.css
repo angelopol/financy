@@ -1745,6 +1745,43 @@ dialog::backdrop {
   margin-top: 16px;
   text-decoration: underline;
 }
+.notice-warning {
+  background: #fbf1de;
+  color: #8a6a2f;
+}
+.notice-danger {
+  background: #fbeae5;
+  color: #b55e4f;
+}
+.notifications-modal .notice {
+  margin-top: 0;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+.notifications-modal .notice .small-button {
+  align-self: flex-start;
+}
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.notification-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.notification-list li:last-child {
+  border-bottom: 0;
+}
+.notification-list li.overdue small {
+  color: #b55e4f;
+}
 .sr-only {
   position: absolute;
   width: 1px;
@@ -2392,6 +2429,14 @@ nav,
   background: #1b2c22;
   border-color: #2c4434;
   color: #e6efe2;
+}
+[data-theme='dark'] .notice-warning {
+  background: #2e2716;
+  color: #e0bd7a;
+}
+[data-theme='dark'] .notice-danger {
+  background: #2c1c19;
+  color: #e0968a;
 }
 [data-theme='dark'] .workspace-avatar,
 [data-theme='dark'] .avatar {

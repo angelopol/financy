@@ -1,13 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { Database, Sql } from '../database';
-import { now, parse, dueAt } from '../domain';
+import { now, parse, dueAt, amountSchema, currencySchema } from '../domain';
+import { RatesService } from '../rates';
 const resources=['earnings','expenses','shopping','budgets','splits','movements','allocations'] as const;
 const querySchema=z.object({resource:z.enum(resources),from:z.iso.date().optional(),to:z.iso.date().optional(),q:z.string().max(120).optional(),page:z.number().int().min(1).max(10000).default(1),project_id:z.number().int().positive().optional(),recurring:z.boolean().optional()}).strict();
 export const FINANCIAL_TOOL={name:'consultar_finanzas',description:'Consulta registros o totales históricos del usuario autenticado. Todas las páginas tienen totales completos sobre el filtro, nunca sumar solamente la página. Usa filtros de fecha y texto para preguntas específicas. Devuelve cobertura y páginas pendientes. Los proyectos se incluyen salvo que se indique project_id; separa sus importes de las cuentas personales.',parameters:{type:'OBJECT',properties:{resource:{type:'STRING',enum:[...resources]},from:{type:'STRING',description:'Fecha inicial YYYY-MM-DD'},to:{type:'STRING',description:'Fecha final YYYY-MM-DD'},q:{type:'STRING',description:'Texto en descripción o etiquetas'},page:{type:'INTEGER'},project_id:{type:'INTEGER'},recurring:{type:'BOOLEAN',description:'Solo ingresos/gastos: true plantillas recurrentes; false historial realizado; omitido ambos separados en totales'}},required:['resource']}};
+const calculatorSchema=z.object({amount:amountSchema,currency:currencySchema,date:z.iso.date().optional()}).strict();
+export const CALCULATOR_TOOL={name:'convertir_moneda',description:'Convierte un importe a USD al valor del dólar paralelo, usando la misma calculadora y tasas del conversor de Financy (fuente de verdad para tasas BCV y paralelo, no un dato inventado). Úsala para preguntas como "cuántos son 543 euros a BCV" o "a cuánto equivalen 2000 bolívares".',parameters:{type:'OBJECT',properties:{amount:{type:'NUMBER',description:'Importe a convertir, en la moneda de origen'},currency:{type:'STRING',enum:['$','bs','$bcv','€','EUR_PARALLEL'],description:'Moneda y tasa de origen: $ dólares; bs bolívares a tasa paralelo; $bcv dólares a tasa BCV (convertidos a paralelo); € euros a tasa BCV (convertidos a paralelo); EUR_PARALLEL euros a tasa paralelo'},date:{type:'STRING',description:'Fecha YYYY-MM-DD opcional; si se omite usa la tasa vigente'}},required:['amount','currency']}};
 @Injectable()
 export class FinancialContextService {
-  constructor(@Inject(Database) private db:Database){}
+  constructor(@Inject(Database) private db:Database,@Inject(RatesService) private rates:RatesService){}
+  async convert(args:unknown){
+    const v=parse(calculatorSchema,args);
+    return {amount:v.amount,currency:v.currency,usd:await this.rates.convert(v.currency,v.amount,v.date),date:v.date??now().toISODate()};
+  }
   async snapshot(user:string){
     return this.db.transaction(async sql=>{
       await sql.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');

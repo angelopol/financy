@@ -447,4 +447,54 @@ export class FinanceService {
       };
     });
   }
+  // Powers the notification bell: recurring items due within a week (including
+  // overdue ones) and the current month's spending-limit status. Read-only and
+  // separate from dashboard() since it's polled from every page, not just /dashboard.
+  async notifications(user: string) {
+    return this.db.transaction(async (sql) => {
+      const profile = (
+        await sql.query('SELECT monthly_expense_limit FROM users WHERE id=$1', [user])
+      ).rows[0];
+      const month = now().toFormat('yyyy-MM');
+      const spent = (
+        await sql.query(
+          `SELECT COALESCE(sum(amount),0) AS total FROM expenses WHERE "user"=$1 AND project_id IS NULL AND term IS NULL AND claim_day IS NULL AND created_at>=$2::date AND created_at<$2::date+interval '1 month'`,
+          [user, month + '-01'],
+        )
+      ).rows[0].total;
+      const limit = Number(profile.monthly_expense_limit || 0);
+      const budget =
+        limit > 0
+          ? {
+              limit: money(limit),
+              spent: money(spent),
+              percent: Math.round((Number(spent) / limit) * 100),
+              level:
+                Number(spent) >= limit ? 'exceeded' : Number(spent) >= limit * 0.8 ? 'warning' : 'ok',
+            }
+          : null;
+      const items: any[] = [];
+      for (const t of ['earnings', 'expenses'] as const) {
+        const rows = await sql.query(
+          `SELECT * FROM ${t} WHERE "user"=$1 AND project_id IS NULL AND (term IS NOT NULL OR claim_day IS NOT NULL)`,
+          [user],
+        );
+        for (const r of rows.rows) {
+          const due = dueAt(r);
+          if (due && due <= now().plus({ days: 7 }))
+            items.push({
+              id: r.id,
+              type: t,
+              description: r.description,
+              amount: r.amount,
+              currency: r.currency ?? '$',
+              due_at: due.toISO(),
+              overdue: due < now(),
+            });
+        }
+      }
+      items.sort((a, b) => a.due_at.localeCompare(b.due_at));
+      return { as_of: now().toISO(), items: items.slice(0, 10), budget };
+    });
+  }
 }

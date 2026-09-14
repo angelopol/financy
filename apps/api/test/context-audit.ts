@@ -14,7 +14,7 @@ async function main() {
   rates.get = async () => ({ bcv: 36, parallel: 40, euro: 44, euro_parallel: 48 }) as any;
   const f = new FinanceService(db, rates);
   const p = new PlanningService(f);
-  const ctx = new FinancialContextService(db);
+  const ctx = new FinancialContextService(db, rates);
 
   const uid = (
     await db.query('INSERT INTO users(name,email,password) VALUES($1,$2,$3) RETURNING id', [

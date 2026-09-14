@@ -7,6 +7,7 @@ import { FinanceService } from '../src/finance';
 import { PlanningService } from '../src/planning';
 import { RatesService } from '../src/rates';
 import { JobsService } from '../src/jobs';
+import { PushService } from '../src/push';
 import { ActionsService } from '../src/ai/actions';
 import { ActivityService } from '../src/activity';
 import { GeminiService, MAX_CONTEXT_BYTES } from '../src/ai/gemini';
@@ -21,7 +22,9 @@ rates.get = async () =>
 const f = new FinanceService(db, rates),
   p = new PlanningService(f),
   activity = new ActivityService(db, f, p),
-  actions = new ActionsService(db, f, p, activity);
+  actions = new ActionsService(db, f, p, activity),
+  financialContext = new FinancialContextService(db, rates),
+  push = new PushService(db);
 let sequence = 0;
 async function user(box = 0, savings = 0) {
   const id = (
@@ -185,11 +188,100 @@ test('cron honors manual-only entries and deduplicates reminder outbox', async (
       e.id,
     ]);
   }
-  const jobs = new JobsService(db, f);
+  const jobs = new JobsService(db, f, push);
   await jobs.run();
   await jobs.run();
   assert.equal((await f.balances(db, u)).box, '15.00');
   assert.equal((await db.query('SELECT * FROM financy_mail WHERE user_id=$1', [u])).rows.length, 1);
+});
+test('cron sends a push reminder for expenses too, and only once per due date', async () => {
+  const u = await user(100);
+  await db.query('UPDATE users SET email_verified_at=now() WHERE id=$1', [u]);
+  const e = await f.save(u, 'expenses', entry('12', { recurrence_type: 'days', term: 1 }));
+  await db.query('UPDATE expenses SET "UpdatedTerm"=$1 WHERE id=$2', [
+    now().toFormat('yyyy-MM-dd HH:mm:ss'),
+    e.id,
+  ]);
+  const sends: any[] = [];
+  const testPush = new PushService(db);
+  testPush.send = (async (user: string, payload: any) => {
+    sends.push({ user, payload });
+  }) as any;
+  const jobs = new JobsService(db, f, testPush);
+  await jobs.run();
+  await jobs.run();
+  assert.equal(sends.length, 1);
+  assert.equal(sends[0].user, u);
+  assert.match(sends[0].payload.title, /Gasto/);
+});
+test('notifications() surfaces recurring items due within a week and the spending-limit status', async () => {
+  const u = await user(200);
+  await db.query('UPDATE users SET monthly_expense_limit=100 WHERE id=$1', [u]);
+  const soon = await f.save(u, 'earnings', entry('50', { recurrence_type: 'days', term: 3 }));
+  const far = await f.save(u, 'expenses', entry('10', { recurrence_type: 'days', term: 60 }));
+  await f.save(u, 'expenses', entry('120'));
+  const result = await f.notifications(u);
+  assert.ok(result.items.some((i: any) => i.id === soon.id && i.type === 'earnings'));
+  assert.ok(!result.items.some((i: any) => i.id === far.id));
+  assert.equal(result.budget!.level, 'exceeded');
+  assert.equal(result.budget!.spent, '120.00');
+});
+test('notifications() has no budget block when no limit is set', async () => {
+  const u = await user();
+  assert.equal((await f.notifications(u)).budget, null);
+});
+test('push subscriptions can be saved, deduplicated by endpoint and removed', async () => {
+  const u = await user(),
+    other = await user();
+  const sub = { endpoint: 'https://push.test/a', keys: { p256dh: 'p1', auth: 'a1' } };
+  await push.subscribe(u, sub);
+  assert.equal(await push.isSubscribed(u), true);
+  assert.equal(await push.isSubscribed(other), false);
+  // Re-subscribing the same endpoint under another user reassigns it rather than duplicating it.
+  await push.subscribe(other, sub);
+  assert.equal(await push.isSubscribed(u), false);
+  assert.equal(await push.isSubscribed(other), true);
+  await push.unsubscribe(other, sub.endpoint);
+  assert.equal(await push.isSubscribed(other), false);
+  await assert.doesNotReject(push.send(other, { title: 'x', body: 'y' }));
+});
+test('the notifications endpoints list items, expose push status and manage subscriptions over HTTP', async () => {
+  process.env.APP_URL = 'http://localhost:5173';
+  const u = await user(100);
+  const userRow = (await db.query('SELECT email FROM users WHERE id=$1', [u])).rows[0];
+  await f.save(u, 'expenses', entry('20', { recurrence_type: 'days', term: 2 }));
+  const app = await createApp(db);
+  await app.listen(0, '127.0.0.1');
+  const base = await app.getUrl();
+  let cookie = '';
+  const request = async (path: string, method = 'GET', body?: any) =>
+    fetch(base + '/api' + path, {
+      method,
+      headers: { Origin: 'http://localhost:5173', 'Content-Type': 'application/json', Cookie: cookie },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  try {
+    const login = await request('/auth/login', 'POST', {
+      email: userRow.email,
+      password: 'password1234',
+    });
+    cookie = login.headers.get('set-cookie')!.split(';')[0];
+    const before = await (await request('/notifications')).json();
+    assert.equal(before.push_enabled, false);
+    assert.equal(before.items.length, 1);
+    const sub = { endpoint: 'https://push.test/http-' + u, keys: { p256dh: 'p', auth: 'a' } };
+    assert.equal((await request('/notifications/subscribe', 'POST', sub)).status, 201);
+    const after = await (await request('/notifications')).json();
+    assert.equal(after.push_enabled, true);
+    assert.equal(
+      (await request('/notifications/unsubscribe', 'POST', { endpoint: sub.endpoint })).status,
+      201,
+    );
+    const disabled = await (await request('/notifications')).json();
+    assert.equal(disabled.push_enabled, false);
+  } finally {
+    await app.getHttpServer().close();
+  }
 });
 test('project scope always includes owner and does not touch personal accounts', async () => {
   const u = await user(),
@@ -318,6 +410,57 @@ test('chat proposes an action through a mocked Gemini call, and only the confirm
     assert.equal((await f.balances(db, uid)).box, '130.00');
     const again = await request('/ai/actions/' + modelMessage.action.id + '/confirm', 'POST', {});
     assert.equal(again.status, 409);
+  } finally {
+    await app.getHttpServer().close();
+  }
+});
+test('chat can call the currency calculator tool to convert an amount to USD', async () => {
+  process.env.APP_URL = 'http://localhost:5173';
+  process.env.GEMINI_API_KEY = 'test-key';
+  const app = await createApp(db);
+  const gemini = app.get(GeminiService);
+  const finances = app.get(FinancialContextService);
+  let calledWith: any = null;
+  finances.convert = (async (args: any) => {
+    calledWith = args;
+    return { amount: args.amount, currency: args.currency, usd: '478.35', date: '2026-09-14' };
+  }) as any;
+  let call = 0;
+  gemini.generate = (async () => {
+    call++;
+    if (call === 1)
+      return {
+        role: 'model',
+        parts: [{ functionCall: { name: 'convertir_moneda', args: { amount: 543, currency: '€' } } }],
+      };
+    return { role: 'model', parts: [{ text: '543 euros a BCV son USD 478,35 al paralelo.' }] };
+  }) as any;
+  await app.listen(0, '127.0.0.1');
+  const base = await app.getUrl();
+  let cookie = '';
+  const request = async (path: string, method = 'GET', body?: any) =>
+    fetch(base + '/api' + path, {
+      method,
+      headers: { Origin: 'http://localhost:5173', 'Content-Type': 'application/json', Cookie: cookie },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  try {
+    const u = await user();
+    const userRow = (await db.query('SELECT email FROM users WHERE id=$1', [u])).rows[0];
+    const login = await request('/auth/login', 'POST', {
+      email: userRow.email,
+      password: 'password1234',
+    });
+    cookie = login.headers.get('set-cookie')!.split(';')[0];
+    const sent = await request('/ai/messages', 'POST', {
+      request_id: crypto.randomUUID(),
+      message: 'Cuantos son 543 euros a BCV',
+    });
+    assert.equal(sent.status, 201);
+    assert.deepEqual(calledWith, { amount: 543, currency: '€' });
+    const { messages } = await sent.json();
+    const modelMessage = messages.find((m: any) => m.role === 'model');
+    assert.match(modelMessage.content, /478,35|478\.35/);
   } finally {
     await app.getHttpServer().close();
   }
@@ -474,6 +617,12 @@ test('currency conversions preserve legacy formulas and fail closed', async () =
   broken.get = async () => ({}) as any;
   await assert.rejects(broken.convert('bs', '5'));
   assert.equal(await broken.convert('$', '5'), '5.00');
+});
+test('financial context calculator tool converts using the same rates as the app conversor', async () => {
+  const result = await financialContext.convert({ amount: 543, currency: '€' });
+  assert.equal(result.usd, '597.30');
+  assert.equal(result.currency, '€');
+  await assert.rejects(financialContext.convert({ amount: 543, currency: 'not-a-currency' }));
 });
 test('CSV neutralizes spreadsheet formulas and quotes embedded delimiters', () => {
   assert.equal(csvCell('=SUM(A1)'), '"\'=SUM(A1)"');

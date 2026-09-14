@@ -43,6 +43,7 @@ import { Chat } from './Chat';
 import { ThemeSelect } from './theme';
 import { Empty, EntryRows, Loading, Modal, Progress } from './components';
 import { Amount, BudgetForm, EntryForm, Form, Provider, ShopForm } from './forms';
+import { pushSupported, getPushSubscription, enablePush, disablePush } from './push';
 const navigation = [
   ['/dashboard', 'Vista general', LayoutDashboard],
   ['/earnings', 'Ingresos', ArrowDownLeft],
@@ -332,8 +333,13 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
             </span>
             <button
               className="icon-button"
-              aria-label="Ver próximos movimientos"
-              onClick={() => navigate('/dashboard#upcoming')}
+              aria-label="Ver notificaciones"
+              onClick={() =>
+                setModal({
+                  title: 'Notificaciones',
+                  content: <NotificationsModal close={() => setModal(null)} navigate={navigate} />,
+                })
+              }
             >
               <Bell size={19} />
             </button>
@@ -1070,6 +1076,73 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
     </div>
   );
 }
+function NotificationsModal({ close, navigate }: { close: () => void; navigate: (path: string) => void }) {
+  const [data, setData] = useState<any>(null),
+    [deviceSubscribed, setDeviceSubscribed] = useState<boolean | null>(null);
+  useEffect(() => {
+    api('/notifications')
+      .then(setData)
+      .catch(() => setData({ items: [], budget: null, push_enabled: false, push_supported: false }));
+    if (pushSupported())
+      getPushSubscription()
+        .then((s) => setDeviceSubscribed(!!s))
+        .catch(() => setDeviceSubscribed(false));
+    else setDeviceSubscribed(false);
+  }, []);
+  if (!data) return <Loading />;
+  const showPushBanner = data.push_supported && pushSupported() && deviceSubscribed === false;
+  return (
+    <div className="notifications-modal">
+      {showPushBanner && (
+        <div className="notice">
+          Activa las notificaciones push para enterarte de tus movimientos próximos y tu límite de
+          gastos aunque no tengas Financy abierto.
+          <button
+            className="small-button"
+            onClick={() => {
+              close();
+              navigate('/profile');
+            }}
+          >
+            Activar en Configuración
+          </button>
+        </div>
+      )}
+      {data.budget && data.budget.level !== 'ok' && (
+        <div className={'notice ' + (data.budget.level === 'exceeded' ? 'notice-danger' : 'notice-warning')}>
+          {data.budget.level === 'exceeded'
+            ? `Superaste tu límite mensual de gastos: ${usd(data.budget.spent)} de ${usd(data.budget.limit)}.`
+            : `Vas por el ${data.budget.percent}% de tu límite mensual (${usd(data.budget.spent)} de ${usd(data.budget.limit)}).`}
+        </div>
+      )}
+      {data.items.length ? (
+        <ul className="notification-list">
+          {data.items.map((i: any) => (
+            <li key={i.type + i.id} className={i.overdue ? 'overdue' : ''}>
+              <span className={'entry-icon ' + (i.type === 'earnings' ? 'positive-bg' : 'expense-bg')}>
+                {i.type === 'earnings' ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
+              </span>
+              <div>
+                <strong>{i.description}</strong>
+                <small>
+                  {i.overdue ? 'Venció' : 'Vence'} {dateLabel(i.due_at)} · {usd(i.amount)}
+                </small>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        !showPushBanner &&
+        (!data.budget || data.budget.level === 'ok') && (
+          <Empty
+            title="Todo tranquilo"
+            description="No tienes movimientos próximos ni avisos pendientes."
+          />
+        )
+      )}
+    </div>
+  );
+}
 function Metric({
   title,
   value,
@@ -1419,6 +1492,7 @@ function Profile({
             <ThemeSelect />
           </div>
         </section>
+        <PushSettings notify={notify} />
         <section className="panel padded">
           <h2>Cambiar contraseña</h2>
           <Form
@@ -1480,6 +1554,59 @@ function Profile({
         </section>
       </div>
     </div>
+  );
+}
+function PushSettings({ notify }: { notify: (s: string) => void }) {
+  const [subscribed, setSubscribed] = useState<boolean | null>(null),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState('');
+  useEffect(() => {
+    if (!pushSupported()) return setSubscribed(false);
+    getPushSubscription()
+      .then((s) => setSubscribed(!!s))
+      .catch(() => setSubscribed(false));
+  }, []);
+  async function toggle() {
+    setBusy(true);
+    setError('');
+    try {
+      if (subscribed) {
+        await disablePush();
+        setSubscribed(false);
+        notify('Notificaciones push desactivadas');
+      } else {
+        await enablePush();
+        setSubscribed(true);
+        notify('Notificaciones push activadas');
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="panel padded">
+      <h2>Notificaciones push</h2>
+      <p className="muted">
+        Recibe avisos de movimientos próximos y de tu límite de gastos en este dispositivo, incluso
+        con Financy cerrado.
+      </p>
+      {!pushSupported() ? (
+        <p className="form-note">Este navegador no admite notificaciones push.</p>
+      ) : (
+        <>
+          {error && (
+            <div className="error" role="alert">
+              {error}
+            </div>
+          )}
+          <button className="secondary" disabled={busy || subscribed === null} onClick={toggle}>
+            <Bell size={16} /> {subscribed ? 'Desactivar notificaciones' : 'Activar notificaciones'}
+          </button>
+        </>
+      )}
+    </section>
   );
 }
 function SplitForm({ item, done }: { item: any; done: () => void }) {
