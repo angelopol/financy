@@ -4,7 +4,8 @@ import { Database } from '../database';
 import { FinanceService } from '../finance';
 import { PlanningService } from '../planning';
 import { ActivityService } from '../activity';
-import { amountSchema, currencySchema, now } from '../domain';
+import { AuthService } from '../auth';
+import { amountSchema, currencySchema, idSchema, now } from '../domain';
 
 const earningExpenseArgs = z
   .object({
@@ -47,6 +48,17 @@ const shoppingArgs = z
     currency: currencySchema.default('$'),
   })
   .strict();
+const monthlyLimitArgs = z
+  .object({ monthly_expense_limit: z.number().min(0).max(9999999999) })
+  .strict();
+const purchaseArgs = z
+  .object({
+    shop_list_item_id: idSchema,
+    amount: amountSchema,
+    provider: z.enum(['box', 'savings']).default('box'),
+    not_discount: z.boolean().default(false),
+  })
+  .strict();
 
 const ARG_SCHEMAS: Record<string, z.ZodType<any>> = {
   registrar_ingreso: earningExpenseArgs,
@@ -54,6 +66,8 @@ const ARG_SCHEMAS: Record<string, z.ZodType<any>> = {
   transferir_dinero: transferArgs,
   crear_presupuesto: budgetArgs,
   agregar_compra: shoppingArgs,
+  actualizar_limite_mensual: monthlyLimitArgs,
+  marcar_compra_comprada: purchaseArgs,
 };
 export const ACTION_NAMES = Object.keys(ARG_SCHEMAS);
 export const ACTION_TOOLS = [
@@ -148,6 +162,40 @@ export const ACTION_TOOLS = [
       required: ['description', 'amount'],
     },
   },
+  {
+    name: 'actualizar_limite_mensual',
+    description:
+      'Prepara un cambio del límite mensual de gastos del usuario para que lo confirme en la interfaz. No se aplica hasta que el usuario lo confirme explícitamente. Usa 0 para quitar el límite.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        monthly_expense_limit: { type: 'NUMBER', description: 'Nuevo límite mensual en USD' },
+      },
+      required: ['monthly_expense_limit'],
+    },
+  },
+  {
+    name: 'marcar_compra_comprada',
+    description:
+      'Prepara marcar un artículo de la lista de compras como comprado para que el usuario lo confirme en la interfaz. No se aplica hasta que el usuario lo confirme explícitamente. Busca primero el id del artículo con consultar_finanzas (resource=shopping) si no lo tienes.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        shop_list_item_id: { type: 'STRING', description: 'id del artículo en la lista de compras' },
+        amount: { type: 'NUMBER', description: 'Importe realmente pagado' },
+        provider: {
+          type: 'STRING',
+          enum: ['box', 'savings'],
+          description: 'Cuenta de origen: caja (box) o ahorros (savings). Por defecto caja.',
+        },
+        not_discount: {
+          type: 'BOOLEAN',
+          description: 'true si fue un regalo u obsequio y no debe registrarse como gasto',
+        },
+      },
+      required: ['shop_list_item_id', 'amount'],
+    },
+  },
 ];
 function summarize(name: string, v: any): string {
   const money = (a: unknown, c?: string) => `${a} ${c ?? '$'}`;
@@ -162,6 +210,12 @@ function summarize(name: string, v: any): string {
       return `Crear presupuesto "${v.name}" por ${money(v.amount)}${v.month ? ` para ${v.month}` : ''}`;
     case 'agregar_compra':
       return `Agregar a la lista de compras: "${v.description}" por ${money(v.amount, v.currency)}`;
+    case 'actualizar_limite_mensual':
+      return Number(v.monthly_expense_limit) > 0
+        ? `Actualizar límite mensual de gastos a ${money(v.monthly_expense_limit)}`
+        : 'Quitar el límite mensual de gastos';
+    case 'marcar_compra_comprada':
+      return `Marcar "${v.description ?? 'artículo #' + v.shop_list_item_id}" como comprado por ${money(v.amount)}`;
     default:
       return name;
   }
@@ -179,13 +233,25 @@ export class ActionsService {
     @Inject(FinanceService) private finance: FinanceService,
     @Inject(PlanningService) private planning: PlanningService,
     @Inject(ActivityService) private activity: ActivityService,
+    @Inject(AuthService) private auth: AuthService,
   ) {}
   async propose(user: string, name: string, rawArgs: unknown): Promise<{ error: string } | ActionRow> {
     const schema = ARG_SCHEMAS[name];
     if (!schema) return { error: 'Herramienta no disponible.' };
     const parsed = schema.safeParse(rawArgs ?? {});
     if (!parsed.success) return { error: parsed.error.issues.map((i) => i.message).join('. ') };
-    const summary = summarize(name, parsed.data);
+    let summaryArgs = parsed.data;
+    if (name === 'marcar_compra_comprada') {
+      const item = (
+        await this.db.query('SELECT description FROM shop_list_items WHERE id=$1 AND "user"=$2', [
+          parsed.data.shop_list_item_id,
+          user,
+        ])
+      ).rows[0];
+      if (!item) return { error: 'No se encontró ese artículo en tu lista de compras.' };
+      summaryArgs = { ...parsed.data, description: item.description };
+    }
+    const summary = summarize(name, summaryArgs);
     const row = (
       await this.db.query(
         `INSERT INTO financy_ai_actions(user_id,kind,payload,summary) VALUES($1,$2,$3,$4) RETURNING id,kind,summary,status`,
@@ -204,24 +270,45 @@ export class ActionsService {
     try {
       const v = JSON.parse(row.payload);
       let result: any;
+      let targetId: string | number | null = null;
+      let undoPayload: unknown = {};
       switch (row.kind) {
         case 'registrar_ingreso':
           result = await this.finance.save(user, 'earnings', v);
+          targetId = result.id;
           break;
         case 'registrar_gasto':
           result = await this.finance.save(user, 'expenses', v);
+          targetId = result.id;
           break;
         case 'transferir_dinero':
           result = await this.planning.transfer(user, v);
+          undoPayload = v;
           break;
         case 'crear_presupuesto':
           result = await this.planning.budgetSave(user, {
             ...v,
             month: v.month || now().toFormat('yyyy-MM'),
           });
+          targetId = result.id;
           break;
         case 'agregar_compra':
           result = await this.planning.shopSave(user, v);
+          targetId = result.id;
+          break;
+        case 'actualizar_limite_mensual': {
+          const previousLimit = await this.auth.currentMonthlyLimit(user);
+          result = await this.auth.updateMonthlyLimit(user, v.monthly_expense_limit);
+          undoPayload = { previous_limit: previousLimit };
+          break;
+        }
+        case 'marcar_compra_comprada':
+          result = await this.planning.shopAction(user, v.shop_list_item_id, 'purchase', {
+            amount: v.amount,
+            provider: v.provider,
+            not_discount: v.not_discount,
+          });
+          targetId = v.shop_list_item_id;
           break;
         default:
           throw new ConflictException('Acción no soportada.');
@@ -236,15 +323,10 @@ export class ActionsService {
         transferir_dinero: 'transfer',
         crear_presupuesto: 'budget_created',
         agregar_compra: 'shopping_created',
+        actualizar_limite_mensual: 'limit_updated',
+        marcar_compra_comprada: 'shopping_purchased',
       };
-      await this.activity.log(
-        user,
-        'ai',
-        activityKind[row.kind] ?? row.kind,
-        result?.id ?? null,
-        row.summary,
-        row.kind === 'transferir_dinero' ? v : {},
-      );
+      await this.activity.log(user, 'ai', activityKind[row.kind] ?? row.kind, targetId, row.summary, undoPayload);
       return { ok: true, summary: row.summary, result };
     } catch (error) {
       await this.db.query(`UPDATE financy_ai_actions SET status='pending' WHERE id=$1`, [id]);

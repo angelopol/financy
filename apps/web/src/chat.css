@@ -351,6 +351,28 @@
   text-align: center;
   flex-shrink: 0;
 }
+[data-chat-font-size='large'] .chat-message p,
+[data-chat-font-size='large'] .chat-markdown,
+[data-chat-font-size='large'] .chat-action p,
+[data-chat-font-size='large'] .chat-composer textarea,
+[data-chat-font-size='large'] .chat-welcome p,
+[data-chat-font-size='large'] .chat-welcome button {
+  font-size: 14px;
+}
+[data-chat-font-size='large'] .chat-markdown code {
+  font-size: 13px;
+}
+[data-chat-font-size='xlarge'] .chat-message p,
+[data-chat-font-size='xlarge'] .chat-markdown,
+[data-chat-font-size='xlarge'] .chat-action p,
+[data-chat-font-size='xlarge'] .chat-composer textarea,
+[data-chat-font-size='xlarge'] .chat-welcome p,
+[data-chat-font-size='xlarge'] .chat-welcome button {
+  font-size: 17px;
+}
+[data-chat-font-size='xlarge'] .chat-markdown code {
+  font-size: 15px;
+}
 @media (max-width: 480px) {
   .ai-fab span {
     display: none;

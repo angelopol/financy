@@ -55,6 +55,20 @@ export class AuthService {
     if (!user || !(await compare(value, user.password.replace(/^\$2y\$/, '$2b$'))))
       throw new UnauthorizedException('Correo o contraseña incorrectos');
   }
+  async currentMonthlyLimit(user: string) {
+    return (
+      await this.db.query('SELECT monthly_expense_limit FROM users WHERE id=$1', [user])
+    ).rows[0]?.monthly_expense_limit;
+  }
+  async updateMonthlyLimit(user: string, limit: number) {
+    const u = (
+      await this.db.query(
+        'UPDATE users SET monthly_expense_limit=$1,updated_at=now() WHERE id=$2 RETURNING *',
+        [limit, user],
+      )
+    ).rows[0];
+    return publicUser(u);
+  }
   async session(user: any, res: Response) {
     const token = randomBytes(32).toString('hex');
     await this.db.query(

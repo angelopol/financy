@@ -12,7 +12,8 @@ export class TestDatabase extends Database {
         readFileSync(resolve('database/003_users_name.sql'), 'utf8') +
         readFileSync(resolve('database/004_ai_actions.sql'), 'utf8') +
         readFileSync(resolve('database/005_activity.sql'), 'utf8') +
-        readFileSync(resolve('database/006_notifications.sql'), 'utf8'),
+        readFileSync(resolve('database/006_notifications.sql'), 'utf8') +
+        readFileSync(resolve('database/007_ai_multi_actions.sql'), 'utf8'),
     );
   }
   override async query(text: string, values: any[] = []): Promise<any> {

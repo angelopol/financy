@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { api } from './api';
+import { api, suggestTags } from './api';
 export function Form({
   children,
   onSubmit,
@@ -102,6 +102,11 @@ export function EntryForm({ type, item, done }: { type: string; item?: any; done
   const [recurrence, setRecurrence] = useState(
     item ? (item.claim_day ? 'monthly' : item.term ? 'days' : 'one_time') : 'one_time',
   );
+  // Live preview of the tags the server would auto-generate on save when left blank
+  // (see words() in domain.ts). Stops overriding as soon as the user types their own
+  // tags; clearing the field back to empty resumes following the description.
+  const [slug, setSlug] = useState(item?.slug ?? '');
+  const [slugTouched, setSlugTouched] = useState(Boolean(item?.slug));
   return (
     <Form
       onDone={done}
@@ -120,6 +125,9 @@ export function EntryForm({ type, item, done }: { type: string; item?: any; done
           name="description"
           autoFocus
           defaultValue={item?.description}
+          onChange={(e) => {
+            if (!slugTouched) setSlug(suggestTags(e.target.value).join(' '));
+          }}
           placeholder={
             type === 'earnings' ? 'Ej. Salario de septiembre' : 'Ej. Compra del supermercado'
           }
@@ -188,10 +196,17 @@ export function EntryForm({ type, item, done }: { type: string; item?: any; done
         <input
           aria-label="Etiquetas"
           name="slug"
-          defaultValue={item?.slug}
+          value={slug}
+          onChange={(e) => {
+            setSlug(e.target.value);
+            setSlugTouched(e.target.value.trim() !== '');
+          }}
           placeholder="Ej. hogar alimentación mercado"
         />
-        <small>Vinculan tus gastos con las categorías del presupuesto.</small>
+        <small>
+          Se generan solas a partir de la descripción; edítalas si quieres afinarlas. Vinculan tus
+          gastos con las categorías del presupuesto.
+        </small>
       </label>
       <p className="form-note">
         {recurrence === 'one_time'

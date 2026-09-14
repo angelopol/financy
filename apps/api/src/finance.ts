@@ -351,6 +351,8 @@ export class FinanceService {
         provider: z.enum(['box', 'savings']).optional(),
         from: z.iso.date().optional(),
         to: z.iso.date().optional(),
+        amount_min: z.coerce.number().min(0).optional(),
+        amount_max: z.coerce.number().min(0).optional(),
         project_id: z.coerce.number().int().positive().optional(),
         mode: z.enum(['all', 'recurring', 'history']).default('all'),
       }),
@@ -367,6 +369,8 @@ export class FinanceService {
     if (v.provider) add('provider=?', v.provider);
     if (v.from) add('created_at>=?::date', v.from);
     if (v.to) add("created_at<?::date+interval '1 day'", v.to);
+    if (v.amount_min !== undefined) add('amount>=?', v.amount_min);
+    if (v.amount_max !== undefined) add('amount<=?', v.amount_max);
     if (report || v.mode === 'history') where += ' AND term IS NULL AND claim_day IS NULL';
     else if (v.mode === 'recurring') where += ' AND (term IS NOT NULL OR claim_day IS NOT NULL)';
     const total = (

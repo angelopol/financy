@@ -13,7 +13,7 @@ import {
 import { Database } from './database';
 import { FinanceService } from './finance';
 import { PlanningService } from './planning';
-import { AuthGuard, AuthRequest } from './auth';
+import { AuthGuard, AuthRequest, AuthService } from './auth';
 import { idSchema, parse } from './domain';
 
 export type ActivitySource = 'user' | 'ai';
@@ -23,6 +23,7 @@ export class ActivityService {
     @Inject(Database) private db: Database,
     @Inject(FinanceService) private finance: FinanceService,
     @Inject(PlanningService) private planning: PlanningService,
+    @Inject(AuthService) private auth: AuthService,
   ) {}
   async log(
     user: string,
@@ -46,7 +47,7 @@ export class ActivityService {
     }
     const rows = (
       await this.db.query(
-        `SELECT id,source,kind,summary,created_at,undone_at,(undone_at IS NULL AND kind IN ('earning_created','expense_created','shopping_created','budget_created','transfer')) AS can_undo FROM financy_activity WHERE ${where} ORDER BY id DESC LIMIT 21`,
+        `SELECT id,source,kind,summary,created_at,undone_at,(undone_at IS NULL AND kind IN ('earning_created','expense_created','shopping_created','budget_created','transfer','shopping_purchased','limit_updated')) AS can_undo FROM financy_activity WHERE ${where} ORDER BY id DESC LIMIT 21`,
         params,
       )
     ).rows;
@@ -79,6 +80,12 @@ export class ActivityService {
             amount: payload.amount,
             from: payload.from === 'box' ? 'savings' : 'box',
           });
+          break;
+        case 'shopping_purchased':
+          await this.planning.shopAction(user, row.target_id, 'pending', {});
+          break;
+        case 'limit_updated':
+          await this.auth.updateMonthlyLimit(user, payload.previous_limit);
           break;
         default:
           throw new ConflictException('Esta acción no se puede deshacer.');

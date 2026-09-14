@@ -42,3 +42,17 @@ export const currentMonth = () =>
   }).format(new Date());
 export const accountLabel = (v: string) =>
   v === 'savings' ? 'Ahorros' : v === 'auto' ? 'Automática' : 'Caja';
+// Mirrors apps/api/src/domain.ts's words(): same filler-word length floor (matching
+// Laravel's SlugNormalizer), so the live tag preview matches what the server would
+// auto-generate on save when the tags field is left blank.
+export const suggestTags = (s: string) => [
+  ...new Set(
+    (
+      s
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .match(/[\p{L}\p{N}]+/gu) ?? []
+    ).filter((w) => w.length >= 3),
+  ),
+];

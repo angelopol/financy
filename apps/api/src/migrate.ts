@@ -52,6 +52,7 @@ async function main() {
     await sql.query(readFileSync(resolve('database/004_ai_actions.sql'), 'utf8'));
     await sql.query(readFileSync(resolve('database/005_activity.sql'), 'utf8'));
     await sql.query(readFileSync(resolve('database/006_notifications.sql'), 'utf8'));
+    await sql.query(readFileSync(resolve('database/007_ai_multi_actions.sql'), 'utf8'));
   });
   console.log('Esquema listo. Datos y contraseñas existentes conservados.');
 }

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Inject, Post, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
-import { AuthGuard, AuthRequest } from './auth';
+import { AuthGuard, AuthRequest, AuthService } from './auth';
 import { FinanceService } from './finance';
 import { PushService } from './push';
 import { parse } from './domain';
@@ -16,6 +16,7 @@ export class NotificationsController {
   constructor(
     @Inject(FinanceService) private finance: FinanceService,
     @Inject(PushService) private push: PushService,
+    @Inject(AuthService) private auth: AuthService,
   ) {}
   @Get() async list(@Req() r: AuthRequest) {
     const [data, pushEnabled] = await Promise.all([
@@ -33,5 +34,9 @@ export class NotificationsController {
   @Post('unsubscribe') unsubscribe(@Req() r: AuthRequest, @Body() body: unknown) {
     const v = parse(z.object({ endpoint: z.string().url() }).strict(), body);
     return this.push.unsubscribe(r.user.id, v.endpoint);
+  }
+  @Post('test') async test(@Req() r: AuthRequest) {
+    await this.auth.limit('push-test:' + r.user.id, 10);
+    return this.push.sendTest(r.user.id);
   }
 }

@@ -123,4 +123,37 @@ export class RatesService {
     }
     return money(new Decimal(amount).mul(factor));
   }
+  // Bolívares at the parallel rate, computed directly from the source currency
+  // instead of chaining convert() (USD) then multiplying by the parallel rate
+  // again: same result mathematically, but one rounding step instead of two.
+  async toBs(currency: string, amount: string, date?: string) {
+    if (currency === 'bs') return money(amount);
+    const rates: any = await this.get(date);
+    const required = (key: string) => {
+      if (!rates[key])
+        throw new ServiceUnavailableException(
+          'La tasa requerida no está disponible. Intenta más tarde.',
+        );
+      return new Decimal(rates[key]);
+    };
+    let bsRate: Decimal;
+    switch (currency) {
+      case '$':
+      case 'USD':
+        bsRate = required('parallel');
+        break;
+      case '$bcv':
+        bsRate = required('bcv');
+        break;
+      case '€':
+        bsRate = required('euro');
+        break;
+      case 'EUR_PARALLEL':
+        bsRate = required('euro_parallel');
+        break;
+      default:
+        throw new ServiceUnavailableException('Moneda no soportada');
+    }
+    return money(new Decimal(amount).mul(bsRate));
+  }
 }

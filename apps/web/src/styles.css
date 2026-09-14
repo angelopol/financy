@@ -429,6 +429,15 @@ nav a:hover {
   font-weight: 550;
 }
 .appearance-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.push-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 16px;
 }
 .mobile-menu {
@@ -809,22 +818,21 @@ main {
   margin: 12px 0 18px;
   font-size: 9px;
 }
-.dashboard-side-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
 .quick-converter {
-  padding: 18px 23px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 23px;
+  margin-top: 23px;
 }
 .quick-converter-toggle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
+  gap: 8px;
   font-size: 12px;
   font-weight: 650;
   color: #4c6b40;
+  flex-shrink: 0;
 }
 .quick-converter-toggle span {
   display: flex;
@@ -839,22 +847,46 @@ main {
   transform: rotate(180deg);
 }
 .quick-converter-form {
-  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
-.quick-converter-form .form-grid {
-  grid-template-columns: 1fr;
-  gap: 12px;
+.quick-converter-form select,
+.quick-converter-form input {
+  border: 1px solid #dfe7d4;
+  background: #fcfdf9;
+  border-radius: 7px;
+  padding: 9px 11px;
+  font-size: 12px;
+  color: #486039;
+  flex-shrink: 0;
+}
+.quick-converter-form select {
+  width: 132px;
+}
+.quick-converter-form input {
+  width: 100px;
+  min-width: 0;
+}
+.quick-converter-form .primary {
+  padding: 9px 16px;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 .quick-converter-result {
   background: #eff5e6;
   border-radius: 8px;
-  padding: 11px 14px;
+  padding: 8px 13px;
   font-weight: 700;
-  font-size: 15px;
-  text-align: center;
+  font-size: 13px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .quick-converter-form > .text-link {
-  justify-content: center;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 .dashboard-bottom {
   display: grid;
@@ -1815,6 +1847,9 @@ dialog::backdrop {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 .notification-list li {
   display: flex;
@@ -1822,9 +1857,23 @@ dialog::backdrop {
   gap: 12px;
   padding: 11px 4px;
   border-bottom: 1px solid var(--line);
+  text-align: left;
 }
 .notification-list li:last-child {
   border-bottom: 0;
+}
+.notification-list li > div {
+  min-width: 0;
+}
+.notification-list li strong {
+  display: block;
+  font-size: 12px;
+}
+.notification-list li small {
+  display: block;
+  margin-top: 3px;
+  color: #9ca58f;
+  font-size: 10px;
 }
 .notification-list li.overdue small {
   color: #b55e4f;
@@ -2169,6 +2218,34 @@ dialog::backdrop {
   .dashboard-middle {
     margin-top: 16px;
   }
+  .quick-converter {
+    flex-wrap: wrap;
+    margin-top: 16px;
+    padding: 17px;
+  }
+  .quick-converter-form {
+    flex-wrap: wrap;
+    margin-top: 12px;
+    width: 100%;
+  }
+  .quick-converter-form select,
+  .quick-converter-form input {
+    flex: 1 1 140px;
+    width: auto;
+  }
+  .quick-converter-form .primary {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+  .quick-converter-result {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+  .quick-converter-form > .text-link {
+    flex: 1 1 100%;
+    justify-content: center;
+    margin-left: 0;
+  }
   .panel-head {
     padding: 19px 17px;
   }
@@ -2469,6 +2546,8 @@ nav,
 [data-theme='dark'] .tabs,
 [data-theme='dark'] .form input,
 [data-theme='dark'] .form select,
+[data-theme='dark'] .quick-converter-form input,
+[data-theme='dark'] .quick-converter-form select,
 [data-theme='dark'] .connection-banner,
 [data-theme='dark'] .report-total,
 [data-theme='dark'] .conversion-result,

@@ -8,6 +8,7 @@ import { PlanningService } from '../src/planning';
 import { RatesService } from '../src/rates';
 import { JobsService } from '../src/jobs';
 import { PushService } from '../src/push';
+import { AuthService } from '../src/auth';
 import { ActionsService } from '../src/ai/actions';
 import { ActivityService } from '../src/activity';
 import { GeminiService, MAX_CONTEXT_BYTES } from '../src/ai/gemini';
@@ -21,9 +22,10 @@ rates.get = async () =>
   ({ bcv: 36, parallel: 40, euro: 44, euro_parallel: 48, source: 'test' }) as any;
 const f = new FinanceService(db, rates),
   p = new PlanningService(f),
-  activity = new ActivityService(db, f, p),
-  actions = new ActionsService(db, f, p, activity),
-  financialContext = new FinancialContextService(db, rates),
+  auth = new AuthService(db),
+  activity = new ActivityService(db, f, p, auth),
+  actions = new ActionsService(db, f, p, activity, auth),
+  financialContext = new FinancialContextService(db, rates, f),
   push = new PushService(db);
 let sequence = 0;
 async function user(box = 0, savings = 0) {
@@ -245,6 +247,43 @@ test('push subscriptions can be saved, deduplicated by endpoint and removed', as
   assert.equal(await push.isSubscribed(other), false);
   await assert.doesNotReject(push.send(other, { title: 'x', body: 'y' }));
 });
+test('sendTest reports whether the push actually reached a subscription', async () => {
+  const u = await user();
+  await assert.rejects(push.sendTest(u)); // VAPID keys unset in tests: reported as not configured
+  process.env.VAPID_PUBLIC_KEY =
+    'BNPvH76WFxuS3zpqLx0CNAQ_gQdWm0FhMJUmqzZvHTFe7usdvgdxsBwzSkwRz24i5G7-HSEQF6fVzBRy7SXz5X0';
+  process.env.VAPID_PRIVATE_KEY = 'fFauSE0uvIgOGE3XRFeTTy27WEqknspomJl29S0NMi0';
+  try {
+    await assert.rejects(push.sendTest(u)); // configured, but no subscription on this device
+    await push.subscribe(u, {
+      endpoint: 'https://push.test/sendtest',
+      keys: { p256dh: 'p', auth: 'a' },
+    });
+    const webpush = (await import('web-push')).default;
+    const original = webpush.sendNotification;
+    webpush.sendNotification = (async () => {}) as any;
+    try {
+      const result = await push.sendTest(u);
+      assert.equal(result.ok, true);
+      assert.equal(result.sent, 1);
+    } finally {
+      webpush.sendNotification = original;
+    }
+    // A dead subscription (410 Gone) is pruned instead of reported as success.
+    webpush.sendNotification = (async () => {
+      throw Object.assign(new Error('Gone'), { statusCode: 410 });
+    }) as any;
+    try {
+      await assert.rejects(push.sendTest(u));
+      assert.equal(await push.isSubscribed(u), false);
+    } finally {
+      webpush.sendNotification = original;
+    }
+  } finally {
+    delete process.env.VAPID_PUBLIC_KEY;
+    delete process.env.VAPID_PRIVATE_KEY;
+  }
+});
 test('the notifications endpoints list items, expose push status and manage subscriptions over HTTP', async () => {
   process.env.APP_URL = 'http://localhost:5173';
   const u = await user(100);
@@ -357,6 +396,41 @@ test('AI actions are scoped to their own user', async () => {
   await assert.rejects(actions.cancel(intruder, proposal.id));
   assert.equal((await actions.confirm(owner, proposal.id)).ok, true);
 });
+test('AI can update the monthly limit and mark a purchase as bought, both undoable', async () => {
+  const u = await user(100);
+  const limitProposal = await actions.propose(u, 'actualizar_limite_mensual', {
+    monthly_expense_limit: 500,
+  });
+  assert.ok('id' in limitProposal);
+  await actions.confirm(u, limitProposal.id);
+  assert.equal(await auth.currentMonthlyLimit(u), '500.00');
+  const limitActivity = (
+    await db.query(`SELECT * FROM financy_activity WHERE user_id=$1 AND kind='limit_updated'`, [u])
+  ).rows[0];
+  await activity.undo(u, limitActivity.id);
+  assert.equal(await auth.currentMonthlyLimit(u), null);
+
+  const item = await p.shopSave(u, { description: 'Auriculares', amount: '20' });
+  const missingItem = await actions.propose(u, 'marcar_compra_comprada', {
+    shop_list_item_id: '999999',
+    amount: '20',
+  });
+  assert.ok('error' in missingItem);
+  const purchaseProposal = await actions.propose(u, 'marcar_compra_comprada', {
+    shop_list_item_id: item.id,
+    amount: '20',
+  });
+  assert.ok('id' in purchaseProposal);
+  assert.match(purchaseProposal.summary, /Auriculares/);
+  await actions.confirm(u, purchaseProposal.id);
+  assert.equal((await f.balances(db, u)).box, '80.00');
+  assert.equal((await p.shopList(u, {})).items[0].status, 'purchased');
+  const purchaseActivity = (await activity.list(u)).activity.find((a: any) => a.kind === 'shopping_purchased');
+  assert.equal(purchaseActivity.can_undo, true);
+  await activity.undo(u, purchaseActivity.id);
+  assert.equal((await p.shopList(u, {})).items[0].status, 'pending');
+  assert.equal((await f.balances(db, u)).box, '100.00');
+});
 test('chat proposes an action through a mocked Gemini call, and only the confirm endpoint applies it', async () => {
   process.env.APP_URL = 'http://localhost:5173';
   process.env.GEMINI_API_KEY = 'test-key';
@@ -397,19 +471,85 @@ test('chat proposes an action through a mocked Gemini call, and only the confirm
     assert.equal(sent.status, 201);
     const { messages } = await sent.json();
     const modelMessage = messages.find((m: any) => m.role === 'model');
-    assert.ok(modelMessage.action);
-    assert.equal(modelMessage.action.status, 'pending');
+    assert.equal(modelMessage.actions.length, 1);
+    const [action] = modelMessage.actions;
+    assert.equal(action.status, 'pending');
     assert.equal((await f.balances(db, uid)).box, '100.00');
-    const unauthenticated = await fetch(base + '/api/ai/actions/' + modelMessage.action.id + '/confirm', {
+    const unauthenticated = await fetch(base + '/api/ai/actions/' + action.id + '/confirm', {
       method: 'POST',
       headers: { Origin: 'http://localhost:5173', 'Content-Type': 'application/json' },
     });
     assert.equal(unauthenticated.status, 401);
-    const confirmed = await request('/ai/actions/' + modelMessage.action.id + '/confirm', 'POST', {});
+    const confirmed = await request('/ai/actions/' + action.id + '/confirm', 'POST', {});
     assert.equal(confirmed.status, 201);
     assert.equal((await f.balances(db, uid)).box, '130.00');
-    const again = await request('/ai/actions/' + modelMessage.action.id + '/confirm', 'POST', {});
+    const again = await request('/ai/actions/' + action.id + '/confirm', 'POST', {});
     assert.equal(again.status, 409);
+  } finally {
+    await app.getHttpServer().close();
+  }
+});
+test('chat proposes every operation described in one message, all in a single pending reply', async () => {
+  process.env.APP_URL = 'http://localhost:5173';
+  process.env.GEMINI_API_KEY = 'test-key';
+  const uid = await user(100);
+  const userRow = (await db.query('SELECT email FROM users WHERE id=$1', [uid])).rows[0];
+  const app = await createApp(db);
+  const gemini = app.get(GeminiService);
+  let call = 0;
+  gemini.generate = (async () => {
+    call++;
+    if (call === 1)
+      return {
+        role: 'model',
+        parts: [
+          { functionCall: { name: 'registrar_ingreso', args: { description: 'Freelance', amount: 30 } } },
+          { functionCall: { name: 'registrar_gasto', args: { description: 'Mercado', amount: 15 } } },
+          { functionCall: { name: 'actualizar_limite_mensual', args: { monthly_expense_limit: 500 } } },
+        ],
+      };
+    return {
+      role: 'model',
+      parts: [{ text: 'Preparé las tres operaciones; confírmalas cuando quieras.' }],
+    };
+  }) as any;
+  await app.listen(0, '127.0.0.1');
+  const base = await app.getUrl();
+  let cookie = '';
+  const request = async (path: string, method = 'GET', body?: any) =>
+    fetch(base + '/api' + path, {
+      method,
+      headers: { Origin: 'http://localhost:5173', 'Content-Type': 'application/json', Cookie: cookie },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  try {
+    const login = await request('/auth/login', 'POST', {
+      email: userRow.email,
+      password: 'password1234',
+    });
+    cookie = login.headers.get('set-cookie')!.split(';')[0];
+    const sent = await request('/ai/messages', 'POST', {
+      request_id: crypto.randomUUID(),
+      message: 'Registra un ingreso de 30 por freelance, un gasto de 15 en mercado y sube mi límite mensual a 500',
+    });
+    assert.equal(sent.status, 201);
+    const { messages } = await sent.json();
+    const modelMessage = messages.find((m: any) => m.role === 'model');
+    assert.equal(modelMessage.actions.length, 3);
+    assert.deepEqual(
+      modelMessage.actions.map((a: any) => a.kind).sort(),
+      ['actualizar_limite_mensual', 'registrar_gasto', 'registrar_ingreso'],
+    );
+    assert.ok(modelMessage.actions.every((a: any) => a.status === 'pending'));
+    for (const action of modelMessage.actions)
+      assert.equal((await request('/ai/actions/' + action.id + '/confirm', 'POST', {})).status, 201);
+    assert.equal((await f.balances(db, uid)).box, '115.00');
+    assert.equal(await auth.currentMonthlyLimit(uid), '500.00');
+    // Re-fetching history should still surface all three actions on that same message.
+    const history = await (await request('/ai/messages')).json();
+    const persisted = history.messages.find((m: any) => m.id === modelMessage.id);
+    assert.equal(persisted.actions.length, 3);
+    assert.ok(persisted.actions.every((a: any) => a.status === 'confirmed'));
   } finally {
     await app.getHttpServer().close();
   }
@@ -461,6 +601,61 @@ test('chat can call the currency calculator tool to convert an amount to USD', a
     const { messages } = await sent.json();
     const modelMessage = messages.find((m: any) => m.role === 'model');
     assert.match(modelMessage.content, /478,35|478\.35/);
+  } finally {
+    await app.getHttpServer().close();
+  }
+});
+test('chat answers "how much did I spend under $40" for a large history with one aggregate call, not by paginating', async () => {
+  process.env.APP_URL = 'http://localhost:5173';
+  process.env.GEMINI_API_KEY = 'test-key';
+  const u = await user(10000);
+  const userRow = (await db.query('SELECT email FROM users WHERE id=$1', [u])).rows[0];
+  // A history large enough that listing rows with consultar_finanzas (30/page) would take
+  // many calls; resumir_finanzas should answer it in one, from real seeded data (not mocked).
+  for (let i = 0; i < 60; i++) await f.save(u, 'expenses', entry(String(10 + (i % 5) * 10)));
+  const app = await createApp(db);
+  const gemini = app.get(GeminiService);
+  let call = 0;
+  gemini.generate = (async () => {
+    call++;
+    if (call === 1)
+      return {
+        role: 'model',
+        parts: [
+          {
+            functionCall: {
+              name: 'resumir_finanzas',
+              args: { resource: 'expenses', amount_max: 39.99 },
+            },
+          },
+        ],
+      };
+    return { role: 'model', parts: [{ text: 'Gastaste 720,00 $ en movimientos menores a 40 $.' }] };
+  }) as any;
+  await app.listen(0, '127.0.0.1');
+  const base = await app.getUrl();
+  let cookie = '';
+  const request = async (path: string, method = 'GET', body?: any) =>
+    fetch(base + '/api' + path, {
+      method,
+      headers: { Origin: 'http://localhost:5173', 'Content-Type': 'application/json', Cookie: cookie },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  try {
+    const login = await request('/auth/login', 'POST', {
+      email: userRow.email,
+      password: 'password1234',
+    });
+    cookie = login.headers.get('set-cookie')!.split(';')[0];
+    const sent = await request('/ai/messages', 'POST', {
+      request_id: crypto.randomUUID(),
+      message: 'Cuanto gasté en movimientos menores a 40 dólares este año',
+    });
+    assert.equal(sent.status, 201);
+    assert.equal(call, 2); // one tool round, then the final answer: no pagination loop
+    const { messages } = await sent.json();
+    const modelMessage = messages.find((m: any) => m.role === 'model');
+    assert.match(modelMessage.content, /720,00|720\.00/);
   } finally {
     await app.getHttpServer().close();
   }
@@ -619,10 +814,82 @@ test('currency conversions preserve legacy formulas and fail closed', async () =
   assert.equal(await broken.convert('$', '5'), '5.00');
 });
 test('financial context calculator tool converts using the same rates as the app conversor', async () => {
-  const result = await financialContext.convert({ amount: 543, currency: '€' });
-  assert.equal(result.usd, '597.30');
-  assert.equal(result.currency, '€');
+  const usd = await financialContext.convert({ amount: 543, currency: '€' });
+  assert.equal(usd.result, '597.30');
+  assert.equal(usd.unit, 'USD');
+  assert.equal(usd.currency, '€');
   await assert.rejects(financialContext.convert({ amount: 543, currency: 'not-a-currency' }));
+});
+test('the calculator can target bolívares directly, without chaining through USD', async () => {
+  // Same math as convert() then multiplying by the parallel rate, but in one
+  // rounding step: this is what lets the AI answer "en bolívares" in a single call.
+  assert.equal(await rates.toBs('bs', '250'), '250.00');
+  assert.equal(await rates.toBs('$', '10'), '400.00');
+  assert.equal(await rates.toBs('$bcv', '10'), '360.00');
+  assert.equal(await rates.toBs('€', '543'), '23892.00');
+  assert.equal(await rates.toBs('EUR_PARALLEL', '100'), '4800.00');
+  await assert.rejects(rates.toBs('not-a-currency', '10'));
+  const bs = await financialContext.convert({ amount: 543, currency: '€', target: 'bs' });
+  assert.equal(bs.result, '23892.00');
+  assert.equal(bs.unit, 'Bs');
+  assert.equal(bs.target, 'bs');
+});
+test('resumir_finanzas sums, counts and averages a filter without fetching every row', async () => {
+  const u = await user(1000);
+  for (const amount of ['10', '15', '25', '55', '90']) await f.save(u, 'expenses', entry(amount));
+  const under40 = await financialContext.aggregate(u, { resource: 'expenses', amount_max: 39.99 });
+  assert.equal(under40.total_count, 3);
+  assert.equal(under40.by_currency.length, 1);
+  assert.equal(under40.by_currency[0].currency, '$');
+  assert.equal(under40.by_currency[0].sum, '50.00');
+  const all = await financialContext.aggregate(u, { resource: 'expenses' });
+  assert.equal(all.total_count, 5);
+  assert.equal(all.by_currency[0].sum, '195.00');
+  assert.equal(all.by_currency[0].avg, '39.00');
+  assert.equal(all.by_currency[0].min, '10.00');
+  assert.equal(all.by_currency[0].max, '90.00');
+  const none = await financialContext.aggregate(u, { resource: 'expenses', amount_min: 1000 });
+  assert.equal(none.total_count, 0);
+  assert.equal(none.by_currency.length, 0);
+});
+test('resumir_finanzas flags mixed-currency earnings instead of summing them together, and rejects amounts on allocations', async () => {
+  const u = await user(100);
+  await f.save(u, 'earnings', entry('400', { currency: 'bs', recurrence_type: 'days', term: 15 }));
+  await f.save(u, 'earnings', entry('50'));
+  const mixed = await financialContext.aggregate(u, { resource: 'earnings' });
+  assert.equal(mixed.total_count, 2);
+  assert.equal(mixed.by_currency.length, 2);
+  assert.match(mixed.notes, /conviértelos con convertir_moneda/);
+  const noAmount = await financialContext.aggregate(u, { resource: 'allocations' });
+  assert.ok('error' in noAmount);
+});
+test('list() supports amount_min/amount_max, used by both the Reports page and generar_reporte', async () => {
+  const u = await user(1000);
+  for (const amount of ['12', '38', '70']) await f.save(u, 'expenses', entry(amount));
+  const under40 = await f.list(u, 'expenses', { amount_max: '39.99' });
+  assert.equal(under40.total, 2);
+  assert.equal(under40.totalAmount, '50.00');
+  const over40 = await f.list(u, 'expenses', { amount_min: '40' });
+  assert.equal(over40.total, 1);
+  assert.equal(over40.totalAmount, '70.00');
+});
+test('generar_reporte reuses the exact Reports-page generator and points to a matching report_url', async () => {
+  const u = await user(1000);
+  await f.save(u, 'expenses', entry('12', { provider: 'box' }));
+  await f.save(u, 'expenses', entry('38', { provider: 'box' }));
+  await f.save(u, 'expenses', entry('70', { provider: 'box' }));
+  const report = await financialContext.report(u, {
+    kind: 'expenses',
+    amount_max: 39.99,
+    provider: 'box',
+  });
+  assert.equal(report.total, 2);
+  assert.equal(report.totalAmount, '50.00');
+  assert.equal(report.items.length, 2);
+  assert.equal(report.kind, 'expenses');
+  assert.match(report.report_url, /^\/reports\?kind=expenses&/);
+  assert.match(report.report_url, /provider=box/);
+  await assert.rejects(financialContext.report(u, { kind: 'not-a-kind' }));
 });
 test('CSV neutralizes spreadsheet formulas and quotes embedded delimiters', () => {
   assert.equal(csvCell('=SUM(A1)'), '"\'=SUM(A1)"');

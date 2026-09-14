@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { ConflictException, Injectable, Inject, ServiceUnavailableException } from '@nestjs/common';
 import webpush from 'web-push';
 import { Database } from './database';
 export type PushSubscriptionInput = { endpoint: string; keys: { p256dh: string; auth: string } };
@@ -49,16 +49,52 @@ export class PushService {
     const subs = (
       await this.db.query('SELECT * FROM financy_push_subscriptions WHERE user_id=$1', [user])
     ).rows;
+    for (const s of subs) await this.deliver(s, payload);
+  }
+  // Unlike send(), this reports whether the push actually reached the browser's push
+  // service, so the "Probar" button in Settings can tell the user it truly worked.
+  async sendTest(user: string) {
+    if (!this.configured)
+      throw new ServiceUnavailableException(
+        'Las notificaciones push no están configuradas en el servidor.',
+      );
+    this.vapid();
+    const subs = (
+      await this.db.query('SELECT * FROM financy_push_subscriptions WHERE user_id=$1', [user])
+    ).rows;
+    if (!subs.length)
+      throw new ConflictException('No tienes notificaciones push activas en este dispositivo.');
+    const payload: PushPayload = {
+      title: 'Financy · Notificación de prueba',
+      body: 'Si ves esto, tus notificaciones push funcionan correctamente.',
+    };
+    let sent = 0;
+    let lastError: any = null;
     for (const s of subs) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          JSON.stringify(payload),
-        );
-      } catch (error: any) {
-        if (error?.statusCode === 404 || error?.statusCode === 410)
-          await this.db.query('DELETE FROM financy_push_subscriptions WHERE id=$1', [s.id]);
-      }
+      const error = await this.deliver(s, payload);
+      if (error) lastError = error;
+      else sent++;
+    }
+    if (!sent)
+      throw new ServiceUnavailableException(
+        'No se pudo entregar la notificación de prueba. Intenta desactivar y volver a activar las notificaciones.',
+      );
+    return { ok: true, sent };
+  }
+  private async deliver(
+    sub: { id: string; endpoint: string; p256dh: string; auth: string },
+    payload: PushPayload,
+  ) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify(payload),
+      );
+      return null;
+    } catch (error: any) {
+      if (error?.statusCode === 404 || error?.statusCode === 410)
+        await this.db.query('DELETE FROM financy_push_subscriptions WHERE id=$1', [sub.id]);
+      return error;
     }
   }
 }

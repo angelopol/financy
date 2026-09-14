@@ -40,7 +40,7 @@ import {
 import { api, ApiError, usd, dateLabel, currentMonth, accountLabel } from './api';
 import { Auth } from './Auth';
 import { Chat } from './Chat';
-import { ThemeSelect } from './theme';
+import { ThemeSelect, ChatFontSizeSelect } from './theme';
 import { Empty, EntryRows, Loading, Modal, Progress } from './components';
 import { Amount, BudgetForm, EntryForm, Form, Provider, ShopForm } from './forms';
 import { pushSupported, getPushSubscription, enablePush, disablePush } from './push';
@@ -107,7 +107,7 @@ export function App() {
   return <><Workspace key={pathname} user={user} setUser={setUser} /><Chat key={user.id}/></>;
 }
 function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) {
-  const { pathname } = useLocation(),
+  const { pathname, search } = useLocation(),
     navigate = useNavigate();
   const page = pathname.slice(1) || 'dashboard';
   const [data, setData] = useState<any>(null),
@@ -125,6 +125,8 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
     [reportKind, setReportKind] = useState('expenses'),
     [from, setFrom] = useState(''),
     [to, setTo] = useState(''),
+    [amountMin, setAmountMin] = useState(''),
+    [amountMax, setAmountMax] = useState(''),
     [filtersOpen, setFiltersOpen] = useState(false);
   const [modal, setModal] = useState<{ title: string; content: ReactNode } | null>(null),
     [menu, setMenu] = useState(false);
@@ -154,9 +156,25 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
     setNumber(1);
     setMode('all');
     setProvider('');
+    setAmountMin('');
+    setAmountMax('');
     setMenu(false);
     setFiltersOpen(false);
-  }, [page]);
+    // A report_url from Financy IA (e.g. /reports?kind=expenses&from=...&amount_max=...)
+    // pre-fills these same filters, so opening it shows exactly what the agent summarized.
+    if (page === 'reports') {
+      const linked = new URLSearchParams(search);
+      if (linked.toString()) {
+        setReportKind(linked.get('kind') === 'earnings' ? 'earnings' : 'expenses');
+        if (linked.get('provider')) setProvider(linked.get('provider')!);
+        if (linked.get('from')) setFrom(linked.get('from')!);
+        if (linked.get('to')) setTo(linked.get('to')!);
+        if (linked.get('q')) setQ(linked.get('q')!);
+        if (linked.get('amount_min')) setAmountMin(linked.get('amount_min')!);
+        if (linked.get('amount_max')) setAmountMax(linked.get('amount_max')!);
+      }
+    }
+  }, [page, search]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(''), 4500);
@@ -166,6 +184,8 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
   if (provider) params.set('provider', provider);
   if (from) params.set('from', from);
   if (to) params.set('to', to);
+  if (amountMin) params.set('amount_min', amountMin);
+  if (amountMax) params.set('amount_max', amountMax);
   const query = params.toString();
   useEffect(() => {
     let active = true;
@@ -455,6 +475,7 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                       upcomingLabel="neto por recurrencias pendientes"
                     />
                   </div>
+                  <QuickConverter rates={rates} />
                   <div className="dashboard-middle">
                     <section className="panel flow-panel">
                       <div className="panel-head">
@@ -475,7 +496,6 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                       </div>
                       <FlowChart rows={data.trend} month={month} />
                     </section>
-                    <div className="dashboard-side-stack">
                     <section className="panel limit-panel">
                       <div className="panel-head">
                         <h2>Tu límite mensual</h2>
@@ -519,8 +539,6 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                         Ajustar mi límite <ArrowRight size={14} />
                       </Link>
                     </section>
-                    <QuickConverter rates={rates} />
-                    </div>
                   </div>
                   <div className="dashboard-bottom">
                     <section className="panel">
@@ -684,6 +702,36 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
                         value={to}
                         onChange={(e) => {
                           setTo(e.target.value);
+                          setNumber(1);
+                        }}
+                      />
+                    </label>
+                    <label>
+                      Monto mín.{' '}
+                      <input
+                        aria-label="Monto mínimo"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0,00"
+                        value={amountMin}
+                        onChange={(e) => {
+                          setAmountMin(e.target.value);
+                          setNumber(1);
+                        }}
+                      />
+                    </label>
+                    <label>
+                      Monto máx.{' '}
+                      <input
+                        aria-label="Monto máximo"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0,00"
+                        value={amountMax}
+                        onChange={(e) => {
+                          setAmountMax(e.target.value);
                           setNumber(1);
                         }}
                       />
@@ -1158,7 +1206,7 @@ function QuickConverter({ rates }: { rates: any }) {
     setResult(Number.isFinite(n) && n > 0 && rate ? n * rate : null);
   }
   return (
-    <section className="panel quick-converter">
+    <section className={'panel quick-converter' + (open ? ' open' : '')}>
       <button
         type="button"
         className="quick-converter-toggle"
@@ -1168,49 +1216,42 @@ function QuickConverter({ rates }: { rates: any }) {
         <span>
           <Calculator size={16} /> Calcular
         </span>
-        <ChevronDown size={16} className={open ? 'open' : ''} />
+        <ChevronLeft size={16} className={open ? 'open' : ''} />
       </button>
       {open && (
-        <form className="form quick-converter-form" onSubmit={calculate}>
-          <div className="form-grid">
-            <label>
-              Moneda
-              <select
-                value={currency}
-                onChange={(e) => {
-                  setCurrency(e.target.value as 'bcv' | 'eur');
-                  setResult(null);
-                }}
-              >
-                <option value="bcv">Dólar BCV</option>
-                <option value="eur">Euro BCV</option>
-              </select>
-            </label>
-            <label>
-              Monto
-              <input
-                aria-label="Monto a convertir"
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) => {
-                  setAmount(e.target.value);
-                  setResult(null);
-                }}
-                placeholder="0,00"
-              />
-            </label>
-          </div>
+        <form className="quick-converter-form" onSubmit={calculate}>
+          <select
+            aria-label="Moneda"
+            value={currency}
+            onChange={(e) => {
+              setCurrency(e.target.value as 'bcv' | 'eur');
+              setResult(null);
+            }}
+          >
+            <option value="bcv">Dólar BCV</option>
+            <option value="eur">Euro BCV</option>
+          </select>
+          <input
+            aria-label="Monto a convertir"
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value);
+              setResult(null);
+            }}
+            placeholder="0,00"
+          />
           <button className="primary" type="submit" disabled={!rates}>
             Calcular
           </button>
           {result != null && (
-            <p className="quick-converter-result">
+            <span className="quick-converter-result">
               {new Intl.NumberFormat('es-VE', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               }).format(result)}{' '}
               Bs
-            </p>
+            </span>
           )}
           <Link className="text-link" to="/calculator">
             Conversor avanzado <ArrowRight size={14} />
@@ -1567,6 +1608,7 @@ function Profile({
           <p className="muted">Elige cómo se ve Financy en este dispositivo.</p>
           <div className="appearance-row">
             <ThemeSelect />
+            <ChatFontSizeSelect />
           </div>
         </section>
         <PushSettings notify={notify} />
@@ -1636,6 +1678,7 @@ function Profile({
 function PushSettings({ notify }: { notify: (s: string) => void }) {
   const [subscribed, setSubscribed] = useState<boolean | null>(null),
     [busy, setBusy] = useState(false),
+    [testing, setTesting] = useState(false),
     [error, setError] = useState('');
   useEffect(() => {
     if (!pushSupported()) return setSubscribed(false);
@@ -1662,6 +1705,18 @@ function PushSettings({ notify }: { notify: (s: string) => void }) {
       setBusy(false);
     }
   }
+  async function test() {
+    setTesting(true);
+    setError('');
+    try {
+      await api('/notifications/test', 'POST', {});
+      notify('Notificación de prueba enviada. Deberías verla en unos segundos.');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setTesting(false);
+    }
+  }
   return (
     <section className="panel padded">
       <h2>Notificaciones push</h2>
@@ -1678,9 +1733,16 @@ function PushSettings({ notify }: { notify: (s: string) => void }) {
               {error}
             </div>
           )}
-          <button className="secondary" disabled={busy || subscribed === null} onClick={toggle}>
-            <Bell size={16} /> {subscribed ? 'Desactivar notificaciones' : 'Activar notificaciones'}
-          </button>
+          <div className="push-settings-actions">
+            <button className="secondary" disabled={busy || subscribed === null} onClick={toggle}>
+              <Bell size={16} /> {subscribed ? 'Desactivar notificaciones' : 'Activar notificaciones'}
+            </button>
+            {subscribed && (
+              <button className="secondary" disabled={testing} onClick={test}>
+                <Sparkles size={16} /> {testing ? 'Enviando…' : 'Probar'}
+              </button>
+            )}
+          </div>
         </>
       )}
     </section>
