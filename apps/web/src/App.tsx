@@ -176,6 +176,11 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
     }
   }, [page, search]);
   useEffect(() => {
+    if (page !== 'dashboard') return;
+    const linked = new URLSearchParams(search);
+    if (linked.get('expense') === '1') entry('expenses');
+  }, [page, search]);
+  useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(''), 4500);
     return () => clearTimeout(t);
