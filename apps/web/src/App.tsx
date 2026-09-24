@@ -52,7 +52,7 @@ const navigation = [
   ['/budgets', 'Presupuestos', Target],
   ['/shopping', 'Lista de compras', ShoppingBag],
   ['/reports', 'Reportes', ChartNoAxesCombined],
-  ['/calculator', 'Conversor', Calculator],
+  ['/calculator', 'Calculadora', Calculator],
   ['/activity', 'Actividad', History],
 ] as const;
 const titles: Record<string, [string, string]> = {
@@ -63,7 +63,7 @@ const titles: Record<string, [string, string]> = {
   budgets: ['Presupuestos', 'Un lugar para cada gasto. Más espacio para tus metas.'],
   shopping: ['Lista de compras', 'Compra con intención. Planifica antes de gastar.'],
   reports: ['Reportes', 'Tu historia financiera, con todos los detalles.'],
-  calculator: ['Conversor de monedas', 'Convierte tus importes con las tasas disponibles.'],
+  calculator: ['Calculadora', 'Calcula y combina montos en bolívares, dólares y euros.'],
   activity: ['Actividad', 'Cada acción tuya o de Financy IA, con opción de deshacerla.'],
   profile: ['Tu perfil', 'Haz de Financy un espacio a tu medida.'],
 };
@@ -1123,7 +1123,7 @@ function Workspace({ user, setUser }: { user: any; setUser: (u: any) => void }) 
             </b>
           </span>
           <Link to="/calculator" className="rate-strip-calc">
-            <Calculator size={13} /> Ir al conversor
+            <Calculator size={13} /> Ir a la calculadora
           </Link>
           <small>
             {rates?.effective_date ? 'DolarAPI · ' + rates.effective_date : 'Sin tasas disponibles'}
@@ -1274,7 +1274,7 @@ function QuickConverter({ rates }: { rates: any }) {
             </span>
           )}
           <Link className="text-link" to="/calculator">
-            Conversor avanzado <ArrowRight size={14} />
+            Calculadora completa <ArrowRight size={14} />
           </Link>
         </form>
       )}
@@ -1468,79 +1468,266 @@ function ActivityPage() {
     </section>
   );
 }
+type CalcCurrency = 'bs' | 'usd' | 'eur';
+type CalcOp = '+' | '-' | '*' | '/';
+const calcCurrencies: [CalcCurrency, string, string][] = [
+  ['bs', 'Bs', 'Bolívares'],
+  ['usd', '$', 'Dólares'],
+  ['eur', '€', 'Euros'],
+];
+const calcSymbol = (c: CalcCurrency) => calcCurrencies.find(([k]) => k === c)![1];
+const calcOpLabel: Record<CalcOp, string> = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+const calcFormat = (n: number) =>
+  new Intl.NumberFormat('es-VE', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n);
+const calcMoney = (n: number, c: CalcCurrency) =>
+  c === 'bs' ? calcFormat(n) + ' Bs' : calcSymbol(c) + ' ' + calcFormat(n);
 function CalculatorPage({ rates }: { rates: any }) {
   const [rateType, setRateType] = useState<'parallel' | 'bcv'>('parallel');
-  const [fields, setFields] = useState({ bs: '', usd: '', eur: '' });
-  const usdToBs = rateType === 'parallel' ? rates?.parallel : rates?.bcv;
-  const eurToBs = rateType === 'parallel' ? rates?.euro_parallel : rates?.euro;
-  const ready = Boolean(usdToBs && eurToBs);
-  function fromField(field: 'bs' | 'usd' | 'eur', raw: string) {
-    if (!/^\d*[.,]?\d*$/.test(raw)) return;
-    const n = Number(raw.replace(',', '.'));
-    if (raw === '' || !Number.isFinite(n) || !ready) {
-      setFields((f) => ({ ...f, [field]: raw }));
+  const [base, setBase] = useState<CalcCurrency>('usd');
+  const [acc, setAcc] = useState<number | null>(null);
+  const [op, setOp] = useState<CalcOp | null>(null);
+  const [input, setInput] = useState('');
+  const [inputCur, setInputCur] = useState<CalcCurrency>('usd');
+  const [tape, setTape] = useState<string[]>([]);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
+  const usdToBs = Number(rateType === 'parallel' ? rates?.parallel : rates?.bcv) || 0;
+  const eurToBs = Number(rateType === 'parallel' ? rates?.euro_parallel : rates?.euro) || 0;
+  const ready = usdToBs > 0 && eurToBs > 0;
+  const factor = (c: CalcCurrency) => (c === 'bs' ? 1 : c === 'usd' ? usdToBs : eurToBs);
+  const convert = (n: number, from: CalcCurrency, to: CalcCurrency) =>
+    from === to || !ready ? n : (n * factor(from)) / factor(to);
+  const mixed = op === '+' || op === '-';
+  const typing = input !== '' && input !== '.';
+  // Al multiplicar o dividir, el segundo número es un factor sin moneda.
+  const scalar = typing && op != null && !mixed;
+  const currentCur = typing && mixed ? inputCur : base;
+  const current = typing ? Number(input) : (acc ?? 0);
+
+  function reset() {
+    setAcc(null);
+    setOp(null);
+    setInput('');
+    setInputCur(base);
+    setTape([]);
+    setDone(false);
+    setError('');
+  }
+  function digit(d: string) {
+    setError('');
+    if (done) {
+      setAcc(null);
+      setTape([]);
+      setDone(false);
+      setInput(d === '.' ? '0.' : d);
       return;
     }
-    const bs = field === 'bs' ? n : field === 'usd' ? n * usdToBs : n * eurToBs;
-    setFields({
-      bs: field === 'bs' ? raw : bs.toFixed(2),
-      usd: field === 'usd' ? raw : (bs / usdToBs).toFixed(2),
-      eur: field === 'eur' ? raw : (bs / eurToBs).toFixed(2),
+    setInput((v) => {
+      if (d === '.') return v.includes('.') ? v : (v || '0') + '.';
+      if (v.replace('.', '').length >= 14) return v;
+      return v === '0' ? d : v + d;
     });
   }
+  function backspace() {
+    if (!done) setInput((v) => v.slice(0, -1));
+  }
+  // Aplica la operación pendiente al número escrito; null si no es válida.
+  function apply(): { value: number; label: string } | null {
+    const n = Number(input);
+    if (acc == null || !op) return { value: n, label: calcMoney(n, base) };
+    if (mixed) {
+      const inBase = convert(n, inputCur, base);
+      const label =
+        calcMoney(n, inputCur) + (inputCur !== base ? ` (≈ ${calcMoney(inBase, base)})` : '');
+      return { value: op === '+' ? acc + inBase : acc - inBase, label };
+    }
+    if (op === '/' && n === 0) {
+      setError('No se puede dividir entre 0');
+      return null;
+    }
+    return { value: op === '*' ? acc * n : acc / n, label: calcFormat(n) };
+  }
+  function chooseOp(next: CalcOp) {
+    setError('');
+    if (!typing) {
+      if (acc == null) return;
+      if (done || !op) setTape([calcMoney(acc, base), calcOpLabel[next]]);
+      else setTape((t) => [...t.slice(0, -1), calcOpLabel[next]]);
+      setDone(false);
+      setOp(next);
+      setInput('');
+      setInputCur(base);
+      return;
+    }
+    const r = apply();
+    if (!r) return;
+    setTape((t) => [...t, r.label, calcOpLabel[next]]);
+    setAcc(r.value);
+    setOp(next);
+    setInput('');
+    setInputCur(base);
+  }
+  function equals() {
+    if (acc == null || !op || !typing) return;
+    const r = apply();
+    if (!r) return;
+    setTape((t) => [...t, r.label, '=']);
+    setAcc(r.value);
+    setOp(null);
+    setInput('');
+    setInputCur(base);
+    setDone(true);
+  }
+  function changeBase(next: CalcCurrency) {
+    if (next === base) return;
+    // Sin resultado acumulado, el monto escrito pasa a estar en la nueva moneda.
+    // Con un resultado acumulado, este se convierte con la tasa seleccionada.
+    if (acc != null) {
+      const converted = convert(acc, base, next);
+      setAcc(converted);
+      setTape(op ? [calcMoney(converted, next), calcOpLabel[op]] : []);
+    }
+    if (inputCur === base) setInputCur(next);
+    setBase(next);
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const el = e.target as HTMLElement;
+      if (e.ctrlKey || e.metaKey || e.altKey || el.closest('input, select, textarea, dialog')) return;
+      const k = e.key;
+      if (/^\d$/.test(k)) digit(k);
+      else if (k === '.' || k === ',') digit('.');
+      else if (k === '+' || k === '-' || k === '*' || k === '/') chooseOp(k);
+      else if (k === 'Enter' || k === '=') equals();
+      else if (k === 'Backspace') backspace();
+      else if (k === 'Escape' || k === 'Delete') reset();
+      else return;
+      e.preventDefault();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  const [intPart, decPart] = input.split('.');
+  const display =
+    input !== ''
+      ? Number(intPart || '0').toLocaleString('es-VE') + (input.includes('.') ? ',' + decPart : '')
+      : calcFormat(acc ?? 0);
+  const opKey = (o: CalcOp): string => 'op' + (op === o && !typing ? ' active' : '');
+  const keys: [string, string, () => void, string?][] = [
+    ['C', 'Borrar todo', reset, 'fn'],
+    ['⌫', 'Borrar dígito', backspace, 'fn'],
+    ['÷', 'Dividir', () => chooseOp('/'), opKey('/')],
+    ['×', 'Multiplicar', () => chooseOp('*'), opKey('*')],
+    ['7', '7', () => digit('7')],
+    ['8', '8', () => digit('8')],
+    ['9', '9', () => digit('9')],
+    ['−', 'Restar', () => chooseOp('-'), opKey('-')],
+    ['4', '4', () => digit('4')],
+    ['5', '5', () => digit('5')],
+    ['6', '6', () => digit('6')],
+    ['+', 'Sumar', () => chooseOp('+'), opKey('+')],
+    ['1', '1', () => digit('1')],
+    ['2', '2', () => digit('2')],
+    ['3', '3', () => digit('3')],
+    ['=', 'Igual', equals, 'equals'],
+    ['0', '0', () => digit('0'), 'zero'],
+    [',', 'Coma decimal', () => digit('.')],
+  ];
   return (
     <div className="calculator-layout">
-      <section className="panel padded">
-        <h2>Convierte entre monedas</h2>
-        <p className="muted">
-          Escribe en cualquier campo; los demás se actualizan automáticamente.
-        </p>
-        <div className="form">
-          <label>
-            Tasa
-            <select value={rateType} onChange={(e) => setRateType(e.target.value as any)}>
-              <option value="parallel">Paralelo</option>
-              <option value="bcv">Oficial (BCV)</option>
-            </select>
-          </label>
-          <label>
-            Bolívares (Bs)
-            <input
-              inputMode="decimal"
-              value={fields.bs}
-              onChange={(e) => fromField('bs', e.target.value)}
-              placeholder="0,00"
-            />
-          </label>
-          <label>
-            Dólares ($)
-            <input
-              inputMode="decimal"
-              value={fields.usd}
-              onChange={(e) => fromField('usd', e.target.value)}
-              placeholder="0,00"
-            />
-          </label>
-          <label>
-            Euros (€)
-            <input
-              inputMode="decimal"
-              value={fields.eur}
-              onChange={(e) => fromField('eur', e.target.value)}
-              placeholder="0,00"
-            />
-          </label>
+      <section className="panel padded calc">
+        <div className="calc-toolbar">
+          <div className="calc-segment" role="group" aria-label="Moneda principal">
+            {calcCurrencies.map(([key, symbol, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={base === key ? 'active' : ''}
+                aria-pressed={base === key}
+                title={label}
+                disabled={!ready && acc != null && key !== base}
+                onClick={() => changeBase(key)}
+              >
+                {symbol}
+              </button>
+            ))}
+          </div>
+          <select
+            aria-label="Tasa de cambio"
+            value={rateType}
+            onChange={(e) => setRateType(e.target.value as 'parallel' | 'bcv')}
+          >
+            <option value="parallel">Paralelo</option>
+            <option value="bcv">Oficial (BCV)</option>
+          </select>
+        </div>
+        <div className="calc-display" aria-live="polite">
+          <div className="calc-tape">
+            {tape.length
+              ? tape.join(' ')
+              : 'Monto en ' + calcCurrencies.find(([k]) => k === base)![2].toLowerCase()}
+          </div>
+          <div className="calc-value">
+            {!scalar && <span className="calc-currency">{calcSymbol(currentCur)}</span>}
+            <strong>{display}</strong>
+          </div>
+          {error ? (
+            <div className="calc-error" role="alert">
+              {error}
+            </div>
+          ) : (
+            ready &&
+            !scalar && (
+              <div className="calc-equivalents">
+                {calcCurrencies
+                  .filter(([k]) => k !== currentCur)
+                  .map(([k]) => (
+                    <span key={k}>≈ {calcMoney(convert(current, currentCur, k), k)}</span>
+                  ))}
+              </div>
+            )
+          )}
+        </div>
+        {mixed && (
+          <div className="calc-operand">
+            <span>{op === '+' ? 'Sumar' : 'Restar'} un monto en</span>
+            <div className="calc-segment small" role="group" aria-label="Moneda del siguiente monto">
+              {calcCurrencies.map(([key, symbol, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={inputCur === key ? 'active' : ''}
+                  aria-pressed={inputCur === key}
+                  title={label}
+                  disabled={!ready && key !== base}
+                  onClick={() => setInputCur(key)}
+                >
+                  {symbol}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="calc-keys">
+          {keys.map(([label, aria, action, cls]) => (
+            <button key={label} type="button" className={cls} aria-label={aria} onClick={action}>
+              {label}
+            </button>
+          ))}
         </div>
         {!ready && (
           <p className="form-note">
-            Algunas tasas no están disponibles en este momento. Intenta de nuevo más tarde.
+            Algunas tasas no están disponibles en este momento; solo puedes operar en una moneda.
           </p>
         )}
       </section>
       <section className="panel padded">
         <h2>Una referencia clara</h2>
         <p className="muted">
-          Las tasas provienen de DolarAPI. Si una tasa no está disponible, la conversión se detiene.
+          Las tasas provienen de DolarAPI. Al sumar o restar puedes elegir la moneda de cada monto:
+          se convierte a la moneda principal con la tasa seleccionada.
         </p>
         {[
           ['bcv', 'Dólar oficial'],
@@ -1554,8 +1741,8 @@ function CalculatorPage({ rates }: { rates: any }) {
           </div>
         ))}
         <p className="form-note">
-          Las conversiones históricas buscan hasta 7 días anteriores. EUR oficial usa euro/BCV; la
-          opción legado conserva euro/paralelo.
+          Atajos de teclado: números, + − * /, Enter para el resultado, Retroceso para borrar un
+          dígito y Esc para limpiar.
         </p>
       </section>
     </div>
